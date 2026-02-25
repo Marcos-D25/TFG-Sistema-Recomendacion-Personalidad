@@ -1,0 +1,75 @@
+==========================================================
+REPORTE DE ENTRENAMIENTO - resultados_RegLog.txt
+==========================================================
+
+--- Métricas para el eje: Introversión / Extroversión (E/I) ---
+
+Matriz de Confusión:
+[[257 143]
+ [346 989]]
+
+Reporte de Clasificación:
+              precision    recall  f1-score   support
+
+           0       0.43      0.64      0.51       400
+           1       0.87      0.74      0.80      1335
+
+    accuracy                           0.72      1735
+   macro avg       0.65      0.69      0.66      1735
+weighted avg       0.77      0.72      0.74      1735
+
+--------------------------------------------------
+
+--- Métricas para el eje: Sensación / Intuición (S/N) ---
+
+Matriz de Confusión:
+[[ 138  108]
+ [ 342 1147]]
+
+Reporte de Clasificación:
+              precision    recall  f1-score   support
+
+           0       0.29      0.56      0.38       246
+           1       0.91      0.77      0.84      1489
+
+    accuracy                           0.74      1735
+   macro avg       0.60      0.67      0.61      1735
+weighted avg       0.83      0.74      0.77      1735
+
+--------------------------------------------------
+
+--- Métricas para el eje: Pensamiento / Sentimiento (T/F) ---
+
+Matriz de Confusión:
+[[672 157]
+ [205 701]]
+
+Reporte de Clasificación:
+              precision    recall  f1-score   support
+
+           0       0.77      0.81      0.79       829
+           1       0.82      0.77      0.79       906
+
+    accuracy                           0.79      1735
+   macro avg       0.79      0.79      0.79      1735
+weighted avg       0.79      0.79      0.79      1735
+
+--------------------------------------------------
+
+--- Métricas para el eje: Juicio / Percepción (J/P) ---
+
+Matriz de Confusión:
+[[458 250]
+ [336 691]]
+
+Reporte de Clasificación:
+              precision    recall  f1-score   support
+
+           0       0.58      0.65      0.61       708
+           1       0.73      0.67      0.70      1027
+
+    accuracy                           0.66      1735
+   macro avg       0.66      0.66      0.66      1735
+weighted avg       0.67      0.66      0.66      1735
+
+--------------------------------------------------

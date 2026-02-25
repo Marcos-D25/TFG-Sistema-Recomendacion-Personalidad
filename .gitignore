@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 
 datasets/
+resultados/
 .vscode/
 .idea/
 # C extensions

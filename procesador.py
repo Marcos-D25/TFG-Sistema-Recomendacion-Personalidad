@@ -5,7 +5,7 @@ import re
 from transformers import AutoTokenizer, AutoModel
 import torch
 
-#Esta clase se encarga de tokenizar y realizar el embedding del dataset a partir de un modelo pre-entrenado
+#Esta clase se encarga de limpiar, tokenizar y realizar el embedding del dataset a partir de un modelo pre-entrenado
 class Preprocesador:
     def __init__(self, nomArchivo, nombre_modelo, max_length=512, dispotivo='cuda', columna="posts"):
         print(f"[INFO] Cargando dataset desde: {nomArchivo}")
@@ -34,6 +34,12 @@ class Preprocesador:
 
         return post_limpio
 
+    def reformular_clases(self):
+        #Esta función se encarga de, a partir de las 16 personalidades, generar 4 clases binarias (E/I, S/N, T/F, J/P) para cada una de las dimensiones del MBTI.
+        self.dataset["E/I"] = self.dataset["type"].apply(lambda x: 0 if x[0] == "E" else 1)
+        self.dataset["S/N"] = self.dataset["type"].apply(lambda x: 0 if x[1] == "S" else 1)
+        self.dataset["T/F"] = self.dataset["type"].apply(lambda x: 0 if x[2] == "T" else 1)
+        self.dataset["J/P"] = self.dataset["type"].apply(lambda x: 0 if x[3] == "J" else 1)
 
     def tokenizar_texto(self, texto):
         tokens = self.tokenizer(
@@ -95,9 +101,14 @@ class Preprocesador:
 
         # Paso 3: Preparar DataFrame final
         print("[INFO] Consolidando resultados...")
+        self.reformular_clases() #Generamos las clases binarias para cada dimensión del MBTI
         df_final = pd.DataFrame({
-            "MBTI": self.dataset["type"],
-            "Embedding": [emb.tolist() for emb in embeddings_finales]
+            "Embedding": [emb.tolist() for emb in embeddings_finales],
+            "MBTI": self.dataset["type"].tolist(),
+            "E/I": self.dataset["E/I"].tolist(),
+            "S/N": self.dataset["S/N"].tolist(),
+            "T/F": self.dataset["T/F"].tolist(),
+            "J/P": self.dataset["J/P"].tolist()
         })
 
         # Paso 4: Guardado en Parquet
