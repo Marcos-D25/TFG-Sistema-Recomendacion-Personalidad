@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 
 datasets/
+hiperparametros_*.txt
 resultados/
 .vscode/
 .idea/

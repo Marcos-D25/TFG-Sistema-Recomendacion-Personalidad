@@ -14,20 +14,15 @@ from openpyxl import load_workbook
 from xgboost import XGBClassifier
 
 class Pipeline:
-    def __init__(self, nombre_modelo, balanceador=None):
+    def __init__(self, nombre_modelo, balanceador:Balanceador=None):
         self.nombre_modelo = nombre_modelo
         self.nombre_balanceador = balanceador.__str__() if balanceador else None
         self.balanceador = balanceador
 
     def xgboost(self, nombre_Archivo, parametros = None):
         if not parametros: # En el caso de que no pasen parametros, se usan unos por defecto
-            parametros = {
-                'n_estimators': 100,
-                'max_depth': 3,
-                'learning_rate': 0.1,
-                'subsample': 1.0,
-                'colsample_bytree': 1.0
-            }
+            parametros = {'learning_rate': 0.1, 'max_depth': 7, 'n_estimators': 300, 'subsample': 0.7}
+
         X_train_EI = np.array(self.balanceador.train_bal_EI["Embedding"].tolist())
         y_train_EI = self.balanceador.train_bal_EI["MBTI"].tolist()
         X_train_SN = np.array(self.balanceador.train_bal_SN["Embedding"].tolist())
@@ -37,6 +32,7 @@ class Pipeline:
         X_train_JP = np.array(self.balanceador.train_bal_JP["Embedding"].tolist())
         y_train_JP = self.balanceador.train_bal_JP["MBTI"].tolist()
 
+        '''
         hiperparametros = {
             'n_estimators': [50, 100, 200, 300],
             'max_depth': [3, 5, 7],
@@ -66,30 +62,28 @@ class Pipeline:
                 f.write(f"{dimension}: {params}\n")
         
         print(f"[INFO] Hiperparámetros guardados en {nombre_archivo}")
-        
-        
         '''
+        xgb_EI = XGBClassifier(learning_rate=parametros['learning_rate'], max_depth=parametros['max_depth'], n_estimators=parametros['n_estimators'], subsample=parametros['subsample'], device = "cuda", tree_method="hist",random_state=42, eval_metric="logloss").fit(X_train_EI, y_train_EI)
+        xgb_SN = XGBClassifier(learning_rate=parametros['learning_rate'], max_depth=parametros['max_depth'], n_estimators=parametros['n_estimators'], subsample=parametros['subsample'], device = "cuda", tree_method="hist",random_state=42, eval_metric="logloss").fit(X_train_SN, y_train_SN)
+        xgb_TF = XGBClassifier(learning_rate=parametros['learning_rate'], max_depth=parametros['max_depth'], n_estimators=parametros['n_estimators'], subsample=parametros['subsample'], device = "cuda", tree_method="hist",random_state=42, eval_metric="logloss").fit(X_train_TF, y_train_TF)
+        xgb_JP = XGBClassifier(learning_rate=parametros['learning_rate'], max_depth=parametros['max_depth'], n_estimators=parametros['n_estimators'], subsample=parametros['subsample'], device = "cuda", tree_method="hist",random_state=42, eval_metric="logloss").fit(X_train_JP, y_train_JP)
+
         self.modelos = { 
             'EI': xgb_EI,
             'SN': xgb_SN,
             'TF': xgb_TF,
             'JP': xgb_JP
         }
-        '''
+        
 
-        #self.guardar_resultados(nombre_Archivo=nombre_Archivo, metodo_balanceo=self.nombre_balanceador, parametros_str=str(parametros), modelo_clasificacion="XGBoost")
-        #os.makedirs("modelos_LR", exist_ok=True)
-        #for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
-        #    self.guardar_modelo("modelos_XGB", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
+        self.guardar_resultados(nombre_Archivo=nombre_Archivo, metodo_balanceo=self.nombre_balanceador, parametros_str=str(parametros), modelo_clasificacion="XGBoost")
+        os.makedirs("modelos_XGB", exist_ok=True)
+        for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
+            self.guardar_modelo("modelos_XGB", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
 
     def LinearSVM(self, nombre_Archivo, parametros = None):
         if not parametros: # En el caso de que no pasen parametros, se usan unos por defecto
-            parametros = {
-                'C': 1.0,
-                'penalty': 'l2',
-                'loss': 'squared_hinge',
-                'max_iter': 1000
-            }
+            parametros = {'C': 10, 'loss': 'squared_hinge', 'max_iter': 1000, 'penalty': 'l2'}
 
         X_train_EI = np.array(self.balanceador.train_bal_EI["Embedding"].tolist())
         y_train_EI = self.balanceador.train_bal_EI["MBTI"].tolist()
@@ -99,7 +93,7 @@ class Pipeline:
         y_train_TF = self.balanceador.train_bal_TF["MBTI"].tolist()
         X_train_JP = np.array(self.balanceador.train_bal_JP["Embedding"].tolist())
         y_train_JP = self.balanceador.train_bal_JP["MBTI"].tolist()
-
+        '''
         hiperparametros = {
             'penalty': ['l2'],
             'loss': ['hinge', 'squared_hinge'],
@@ -131,18 +125,24 @@ class Pipeline:
         print(f"[INFO] Hiperparámetros guardados en {nombre_archivo}")
         
         '''
+
+        lSVM_EI = LinearSVC(C=parametros['C'], loss=parametros['loss'], max_iter=parametros['max_iter'], penalty=parametros['penalty'], random_state=42).fit(X_train_EI, y_train_EI)
+        lSVM_SN = LinearSVC(C=parametros['C'], loss=parametros['loss'], max_iter=parametros['max_iter'], penalty=parametros['penalty'], random_state=42).fit(X_train_SN, y_train_SN)
+        lSVM_TF = LinearSVC(C=parametros['C'], loss=parametros['loss'], max_iter=parametros['max_iter'], penalty=parametros['penalty'], random_state=42).fit(X_train_TF, y_train_TF)
+        lSVM_JP = LinearSVC(C=parametros['C'], loss=parametros['loss'], max_iter=parametros['max_iter'], penalty=parametros['penalty'], random_state=42).fit(X_train_JP, y_train_JP)
+
         self.modelos = { 
             'EI': lSVM_EI,
             'SN': lSVM_SN,
             'TF': lSVM_TF,
             'JP': lSVM_JP
         }
-        '''
+        
 
-        #self.guardar_resultados(nombre_Archivo=nombre_Archivo, metodo_balanceo=self.nombre_balanceador, parametros_str=str(parametros), modelo_clasificacion="XGBoost")
-        #os.makedirs("modelos_LR", exist_ok=True)
-        #for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
-        #    self.guardar_modelo("modelos_XGB", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
+        self.guardar_resultados(nombre_Archivo=nombre_Archivo, metodo_balanceo=self.nombre_balanceador, parametros_str=str(parametros), modelo_clasificacion="LinearSVM")
+        os.makedirs("modelos_LinearSVM", exist_ok=True)
+        for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
+            self.guardar_modelo("modelos_LinearSVM", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
 
     def MLP(self, nombre_Archivo, parametros = None):
         if not parametros: # En el caso de que no pasen parametros, se usan unos por defecto
@@ -170,21 +170,21 @@ class Pipeline:
             'solver': ['adam', 'sgd',  'lbfgs'],
             'alpha': [0.0001, 0.001, 0.01],
             'learning_rate': ['constant', 'adaptive'],
-            'max_iter': [200, 500]
+            'max_iter': [1000, 1500, 2000]
         }
 
         mlp = MLPClassifier(random_state=42)
 
         mlp_EI = GridSearchCV(mlp, hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=1).fit(X_train_EI, y_train_EI)
-        mlp_SN = GridSearchCV(mlp, hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=1).fit(X_train_SN, y_train_SN)
-        mlp_TF = GridSearchCV(mlp, hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=1).fit(X_train_TF, y_train_TF)
-        mlp_JP = GridSearchCV(mlp, hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=1).fit(X_train_JP, y_train_JP)
+        #mlp_SN = GridSearchCV(mlp, hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=1).fit(X_train_SN, y_train_SN)
+        #mlp_TF = GridSearchCV(mlp, hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=1).fit(X_train_TF, y_train_TF)
+        #mlp_JP = GridSearchCV(mlp, hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=1).fit(X_train_JP, y_train_JP)
 
         hiperparametros_info = {
             'E/I': mlp_EI.best_params_,
-            'S/N': mlp_SN.best_params_,
-            'T/F': mlp_TF.best_params_,
-            'J/P': mlp_JP.best_params_
+            #'S/N': mlp_SN.best_params_,
+            #'T/F': mlp_TF.best_params_,
+            #'J/P': mlp_JP.best_params_
         }
         
         nombre_archivo = "hiperparametros_MLP.txt"
@@ -240,15 +240,15 @@ class Pipeline:
         knn = KNeighborsClassifier(random_state=42)
 
         knn_EI = GridSearchCV(knn, hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=1).fit(X_train_EI, y_train_EI)
-        knn_SN = GridSearchCV(knn, hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=1).fit(X_train_SN, y_train_SN)
-        knn_TF = GridSearchCV(knn, hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=1).fit(X_train_TF, y_train_TF)
-        knn_JP = GridSearchCV(knn, hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=1).fit(X_train_JP, y_train_JP)
+        #knn_SN = GridSearchCV(knn, hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=1).fit(X_train_SN, y_train_SN)
+        #knn_TF = GridSearchCV(knn, hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=1).fit(X_train_TF, y_train_TF)
+        #knn_JP = GridSearchCV(knn, hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=1).fit(X_train_JP, y_train_JP)
         
         hiperparametros_info = {
             'E/I': knn_EI.best_params_,
-            'S/N': knn_SN.best_params_,
-            'T/F': knn_TF.best_params_,
-            'J/P': knn_JP.best_params_
+            #'S/N': knn_SN.best_params_,
+            #'T/F': knn_TF.best_params_,
+            #'J/P': knn_JP.best_params_
         }
         
         nombre_archivo = "hiperparametros_KNN.txt"
@@ -433,11 +433,11 @@ if __name__ == "__main__":
     #pipelineBORSMOTE.ejecutar_pipeline_test(preprocesar=False, modelo="RL", nombre_Archivo=f"Resultados_{nombre_modelo.replace('/', '_')}.xlsx")
     #pipelineADASYN.ejecutar_pipeline_test(preprocesar=False, modelo="RL", nombre_Archivo=f"Resultados_{nombre_modelo.replace('/', '_')}.xlsx")
     
-    pipelineSMOTE.ejecutar_pipeline_test(preprocesar=False, modelo="XGBoost", nombre_Archivo=f"Resultados_{nombre_modelo.replace('/', '_')}.xlsx")
+    #pipelineSMOTE.ejecutar_pipeline_test(preprocesar=False, modelo="XGBoost", nombre_Archivo=f"Resultados_{nombre_modelo.replace('/', '_')}.xlsx")
     #pipelineBORSMOTE.ejecutar_pipeline_test(preprocesar=False, modelo="XGBoost", nombre_Archivo=f"Resultados_{nombre_modelo.replace('/', '_')}.xlsx")
     #pipelineADASYN.ejecutar_pipeline_test(preprocesar=False, modelo="XGBoost", nombre_Archivo=f"Resultados_{nombre_modelo.replace('/', '_')}.xlsx")
 
-    pipelineSMOTE.ejecutar_pipeline_test(preprocesar=False, modelo="LinearSVM", nombre_Archivo=f"Resultados_{nombre_modelo.replace('/', '_')}.xlsx")
+    #pipelineSMOTE.ejecutar_pipeline_test(preprocesar=False, modelo="LinearSVM", nombre_Archivo=f"Resultados_{nombre_modelo.replace('/', '_')}.xlsx")
     #pipelineBORSMOTE.ejecutar_pipeline_test(preprocesar=False, modelo="LinearSVM", nombre_Archivo=f"Resultados_{nombre_modelo.replace('/', '_')}.xlsx")
     #pipelineADASYN.ejecutar_pipeline_test(preprocesar=False, modelo="LinearSVM", nombre_Archivo=f"Resultados_{nombre_modelo.replace('/', '_')}.xlsx")
 
