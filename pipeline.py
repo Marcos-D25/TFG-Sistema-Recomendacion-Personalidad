@@ -6,7 +6,6 @@ from procesador import Preprocesador
 from sklearn.model_selection import GridSearchCV
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import LinearSVC
-from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import classification_report, confusion_matrix, precision_recall_fscore_support, accuracy_score
 import joblib
 from openpyxl import load_workbook
@@ -39,37 +38,50 @@ class Pipeline:
 
     def xgboost(self, nombre_Archivo, parametros = None):
         if not parametros: # En el caso de que no pasen parametros, se usan unos por defecto
-            parametros = {'learning_rate': 0.1, 'max_depth': 7, 'n_estimators': 300, 'subsample': 0.7}
-
+            parametros = {'learning_rate': 0.05, 'max_depth': 7, 'n_estimators': 2000, 'subsample': 0.6, 'eval_metric': 'aucpr', 'early_stopping_rounds': 15}
+                        
         X_train_EI = np.array(self.balanceador.train_bal_EI["Embedding"].tolist())
         y_train_EI = self.balanceador.train_bal_EI["MBTI"].tolist()
+        X_val_EI = np.array(self.balanceador.val_EI["Embedding"].tolist())
+        y_val_EI = self.balanceador.val_EI["MBTI"].tolist()
+
         X_train_SN = np.array(self.balanceador.train_bal_SN["Embedding"].tolist())
         y_train_SN = self.balanceador.train_bal_SN["MBTI"].tolist()
+        X_val_SN = np.array(self.balanceador.val_SN["Embedding"].tolist())
+        y_val_SN = self.balanceador.val_SN["MBTI"].tolist()
+        
         X_train_TF = np.array(self.balanceador.train_bal_TF["Embedding"].tolist())
         y_train_TF = self.balanceador.train_bal_TF["MBTI"].tolist()
+        X_val_TF = np.array(self.balanceador.val_TF["Embedding"].tolist())
+        y_val_TF = self.balanceador.val_TF["MBTI"].tolist()
+        
         X_train_JP = np.array(self.balanceador.train_bal_JP["Embedding"].tolist())
         y_train_JP = self.balanceador.train_bal_JP["MBTI"].tolist()
-
+        X_val_JP = np.array(self.balanceador.val_JP["Embedding"].tolist())
+        y_val_JP = self.balanceador.val_JP["MBTI"].tolist()
+        
         '''
         hiperparametros = {
-            'n_estimators': [50, 100, 200, 300],
-            'max_depth': [3, 5, 7],
-            'learning_rate': [0.1, 0.01, 0.001],
-            'subsample': [0.5, 0.7, 1.0]
+            'n_estimators': [2000],#Aunque sea un numero muy grande, el early stopping hace que no se llegue a ese numero si el modelo no mejora en 15 iteraciones seguidas
+            'max_depth': [5,6,7],
+            'learning_rate': [0.1, 0.05],
+            'subsample': [0.3,0.4,0.6],
         }
 
-        xgb = XGBClassifier(device = "cuda", tree_method="hist",random_state=42, eval_metric="logloss")
-
-        xgb_EI = GridSearchCV(xgb, hiperparametros, scoring="accuracy", cv=5, n_jobs=1, verbose=2).fit(X_train_EI, y_train_EI)
-        xgb_SN = GridSearchCV(xgb, hiperparametros, scoring="accuracy", cv=5, n_jobs=1, verbose=2).fit(X_train_SN, y_train_SN)
-        xgb_TF = GridSearchCV(xgb, hiperparametros, scoring="accuracy", cv=5, n_jobs=1, verbose=2).fit(X_train_TF, y_train_TF)
-        xgb_JP = GridSearchCV(xgb, hiperparametros, scoring="accuracy", cv=5, n_jobs=1, verbose=2).fit(X_train_JP, y_train_JP)
-
+        xgb = XGBClassifier(device = "cuda", tree_method="hist",random_state=42, eval_metric="aucpr", early_stopping_rounds=15)
+        #(Maximizar)Usamos aucpr porque es una metrica que se centra en el rendimiento del modelo en la clase minoritaria, lo cual es crucial en nuestro caso de clasificación binaria con clases desbalanceadas.
+        #(Maximizar)F1_macro realiza la media aritmetica de calcular el F1 para cada clase y luego promediarlo.
+        
+        xgb_EI = GridSearchCV(xgb, hiperparametros, scoring="f1_macro", cv=3, n_jobs=1, verbose=1).fit(X_train_EI, y_train_EI, eval_set=[(X_val_EI, y_val_EI)])
+        #xgb_SN = GridSearchCV(xgb, hiperparametros, scoring="accuracy", cv=5, n_jobs=1, verbose=2).fit(X_train_SN, y_train_SN)
+        #xgb_TF = GridSearchCV(xgb, hiperparametros, scoring="accuracy", cv=5, n_jobs=1, verbose=2).fit(X_train_TF, y_train_TF)
+        #xgb_JP = GridSearchCV(xgb, hiperparametros, scoring="accuracy", cv=5, n_jobs=1, verbose=2).fit(X_train_JP, y_train_JP)
+        
         hiperparametros_info = {
             'E/I': xgb_EI.best_params_,
-            'S/N': xgb_SN.best_params_,
-            'T/F': xgb_TF.best_params_,
-            'J/P': xgb_JP.best_params_
+            #'S/N': xgb_SN.best_params_,
+            #'T/F': xgb_TF.best_params_,
+            #'J/P': xgb_JP.best_params_
         }
         
         nombre_archivo = "hiperparametros_XGBoost.txt"
@@ -81,13 +93,18 @@ class Pipeline:
         
         print(f"[INFO] Hiperparámetros guardados en {nombre_archivo}")
         '''
-        xgb_EI = XGBClassifier(learning_rate=parametros['learning_rate'], max_depth=parametros['max_depth'], n_estimators=parametros['n_estimators'], subsample=parametros['subsample'], device = "cuda", tree_method="hist",random_state=42, eval_metric="logloss").fit(X_train_EI, y_train_EI)
+        
+        xgb_EI = XGBClassifier(learning_rate=parametros['learning_rate'], max_depth=parametros['max_depth'], n_estimators=parametros['n_estimators'], subsample=parametros['subsample'], device = "cuda", tree_method="hist",random_state=42, eval_metric=parametros['eval_metric'], early_stopping_rounds=parametros['early_stopping_rounds'], verbosity=0)
+        xgb_EI.fit(X_train_EI, y_train_EI, eval_set=[(X_val_EI, y_val_EI)])
         print("[INFO] Modelo E/I entrenado.")
-        xgb_SN = XGBClassifier(learning_rate=parametros['learning_rate'], max_depth=parametros['max_depth'], n_estimators=parametros['n_estimators'], subsample=parametros['subsample'], device = "cuda", tree_method="hist",random_state=42, eval_metric="logloss").fit(X_train_SN, y_train_SN)
+        xgb_SN = XGBClassifier(learning_rate=parametros['learning_rate'], max_depth=parametros['max_depth'], n_estimators=parametros['n_estimators'], subsample=parametros['subsample'], device = "cuda", tree_method="hist",random_state=42, eval_metric=parametros['eval_metric'], early_stopping_rounds=parametros['early_stopping_rounds'], verbosity=0)
+        xgb_SN.fit(X_train_SN, y_train_SN, eval_set=[(X_val_SN, y_val_SN)])
         print("[INFO] Modelo S/N entrenado.")
-        xgb_TF = XGBClassifier(learning_rate=parametros['learning_rate'], max_depth=parametros['max_depth'], n_estimators=parametros['n_estimators'], subsample=parametros['subsample'], device = "cuda", tree_method="hist",random_state=42, eval_metric="logloss").fit(X_train_TF, y_train_TF)
+        xgb_TF = XGBClassifier(learning_rate=parametros['learning_rate'], max_depth=parametros['max_depth'], n_estimators=parametros['n_estimators'], subsample=parametros['subsample'], device = "cuda", tree_method="hist",random_state=42, eval_metric=parametros['eval_metric'], early_stopping_rounds=parametros['early_stopping_rounds'], verbosity=0)
+        xgb_TF.fit(X_train_TF, y_train_TF, eval_set=[(X_val_TF, y_val_TF)])
         print("[INFO] Modelo T/F entrenado.")
-        xgb_JP = XGBClassifier(learning_rate=parametros['learning_rate'], max_depth=parametros['max_depth'], n_estimators=parametros['n_estimators'], subsample=parametros['subsample'], device = "cuda", tree_method="hist",random_state=42, eval_metric="logloss").fit(X_train_JP, y_train_JP)
+        xgb_JP = XGBClassifier(learning_rate=parametros['learning_rate'], max_depth=parametros['max_depth'], n_estimators=parametros['n_estimators'], subsample=parametros['subsample'], device = "cuda", tree_method="hist",random_state=42, eval_metric=parametros['eval_metric'], early_stopping_rounds=parametros['early_stopping_rounds'], verbosity=0)
+        xgb_JP.fit(X_train_JP, y_train_JP, eval_set=[(X_val_JP, y_val_JP)])
         print("[INFO] Modelo J/P entrenado.")
 
         self.modelos = { 
@@ -102,7 +119,7 @@ class Pipeline:
         os.makedirs("modelos_XGB", exist_ok=True)
         for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
             self.guardar_modelo("modelos_XGB", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
-
+                  
     def LinearSVM(self, nombre_Archivo, parametros = None):
         if not parametros: # En el caso de que no pasen parametros, se usan unos por defecto
             parametros = {'C': 10, 'loss': 'squared_hinge', 'max_iter': 1000, 'penalty': 'l2'}
@@ -299,35 +316,56 @@ class Pipeline:
         
     def RL(self, nombre_Archivo, parametros = None):
         if not parametros: # En el caso de que no pasen parametros, se usan unos por defecto
-            parametros={"C": 10, "penalty": 'l2', "solver": 'liblinear'}
+            parametros={'C': 10, 'class_weight': 'balanced', 'penalty': 'l2', 'solver': 'lbfgs'}
 
         X_train_EI = np.array(self.balanceador.train_bal_EI["Embedding"].tolist())
         y_train_EI = self.balanceador.train_bal_EI["MBTI"].tolist()
+
         X_train_SN = np.array(self.balanceador.train_bal_SN["Embedding"].tolist())
         y_train_SN = self.balanceador.train_bal_SN["MBTI"].tolist()
+        
         X_train_TF = np.array(self.balanceador.train_bal_TF["Embedding"].tolist())
         y_train_TF = self.balanceador.train_bal_TF["MBTI"].tolist()
+        
         X_train_JP = np.array(self.balanceador.train_bal_JP["Embedding"].tolist())
         y_train_JP = self.balanceador.train_bal_JP["MBTI"].tolist()
+        
         '''
         hiperparametros = {
-            'C': [ 0.01, 0.1, 1, 10],
-            'penalty': ['l1','l2'],
-            'solver': ['liblinear']
+            'C': [0.1, 1, 10, 50, 100],
+            'penalty': ['l2'],
+            'solver': ['lbfgs','liblinear', 'saga'],
+            'class_weight': ['balanced']
         }
-        self.lr_EI = GridSearchCV(LogisticRegression(max_iter=2000, random_state=42), hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=3).fit(X_train_EI, y_train_EI)
-        self.lr_SN = GridSearchCV(LogisticRegression(max_iter=2000, random_state=42), hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=3).fit(X_train_SN, y_train_SN)
-        self.lr_TF = GridSearchCV(LogisticRegression(max_iter=2000, random_state=42), hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=3).fit(X_train_TF, y_train_TF)
-        self.lr_JP = GridSearchCV(LogisticRegression(max_iter=2000, random_state=42), hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=3).fit(X_train_JP, y_train_JP)
+        lr_EI = GridSearchCV(LogisticRegression(max_iter=5000, random_state=42), hiperparametros, scoring="f1_macro", cv=3, n_jobs=-1, verbose=3).fit(X_train_EI, y_train_EI)
+        #lr_SN = GridSearchCV(LogisticRegression(max_iter=2000, random_state=42), hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=3).fit(X_train_SN, y_train_SN)
+        #lr_TF = GridSearchCV(LogisticRegression(max_iter=2000, random_state=42), hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=3).fit(X_train_TF, y_train_TF)
+        #lr_JP = GridSearchCV(LogisticRegression(max_iter=2000, random_state=42), hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=3).fit(X_train_JP, y_train_JP)
+        
+        hiperparametros_info = {
+            'E/I': lr_EI.best_params_,
+            #'S/N': lr_SN.best_params_,
+            #'T/F': lr_TF.best_params_,
+            #'J/P': lr_JP.best_params_
+        }
+        print(f"[INFO] Mejor combinación de hiperparámetros: {hiperparametros_info}")
+        nombre_archivo = "hiperparametros_LogisticRegression.txt"
+        with open(nombre_archivo, 'w') as f:
+            f.write(f"Hiperparámetros Regresión Logística - {self.nombre_modelo}\n")
+            f.write("="*50 + "\n\n")
+            for dimension, params in hiperparametros_info.items():
+                f.write(f"{dimension}: {params}\n")
+        
+        print(f"[INFO] Hiperparámetros guardados en {nombre_archivo}")
         '''
         
-        lr_EI = LogisticRegression(C=parametros["C"], penalty=parametros["penalty"], solver=parametros["solver"], max_iter=2000, random_state=42, verbose=0).fit(X_train_EI, y_train_EI)
+        lr_EI = LogisticRegression(C=parametros["C"], penalty=parametros["penalty"], solver=parametros["solver"], class_weight=parametros["class_weight"], max_iter=5000, random_state=42, verbose=0).fit(X_train_EI, y_train_EI)
         print("[INFO] Modelo E/I entrenado.")
-        lr_SN = LogisticRegression(C=parametros["C"], penalty=parametros["penalty"], solver=parametros["solver"], max_iter=2000, random_state=42, verbose=0).fit(X_train_SN, y_train_SN)
+        lr_SN = LogisticRegression(C=parametros["C"], penalty=parametros["penalty"], solver=parametros["solver"], class_weight=parametros["class_weight"], max_iter=5000, random_state=42, verbose=0).fit(X_train_SN, y_train_SN)
         print("[INFO] Modelo S/N entrenado.")
-        lr_TF = LogisticRegression(C=parametros["C"], penalty=parametros["penalty"], solver=parametros["solver"], max_iter=2000, random_state=42, verbose=0).fit(X_train_TF, y_train_TF)
+        lr_TF = LogisticRegression(C=parametros["C"], penalty=parametros["penalty"], solver=parametros["solver"], class_weight=parametros["class_weight"], max_iter=5000, random_state=42, verbose=0).fit(X_train_TF, y_train_TF)
         print("[INFO] Modelo T/F entrenado.")
-        lr_JP = LogisticRegression(C=parametros["C"], penalty=parametros["penalty"], solver=parametros["solver"], max_iter=2000, random_state=42, verbose=0).fit(X_train_JP, y_train_JP)
+        lr_JP = LogisticRegression(C=parametros["C"], penalty=parametros["penalty"], solver=parametros["solver"], class_weight=parametros["class_weight"], max_iter=5000, random_state=42, verbose=0).fit(X_train_JP, y_train_JP)
         print("[INFO] Modelo J/P entrenado.")
         
         #Diccionario para almacenar los modelos entrenados
@@ -342,7 +380,7 @@ class Pipeline:
         os.makedirs("modelos_LR", exist_ok=True)
         for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
             self.guardar_modelo("modelos_LR", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
-
+       
     def obtener_metricas(self, modelo, df_test, nombre_modelo):
         X_test = np.array(df_test["Embedding"].tolist(), dtype=np.float32)
         y_test = df_test["MBTI"].tolist()
@@ -447,10 +485,10 @@ def pipeline_modelo_entreno(modelo:str):
     pipelineBORSMOTE = Pipeline(nombre_modelo=modelo, balanceador=balBORSMOTE)
     pipelineADASYN = Pipeline(nombre_modelo=modelo, balanceador=balADASYN)
 
-    #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN], preprocesar=False, algoritmo="RL", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN], preprocesar=False, algoritmo="RL", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
     #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN], preprocesar=False, algoritmo="XGBoost", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
     #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN], preprocesar=False, algoritmo="LinearSVM", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
-    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN], preprocesar=False, algoritmo="MLP", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN], preprocesar=False, algoritmo="MLP", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
 
 def ejecutar_pipelines(pipelines:list, preprocesar=False, algoritmo=None, nombre_Archivo="Resultados.xlsx"):
     for pipeline in pipelines:
