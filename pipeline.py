@@ -47,30 +47,39 @@ class Pipeline:
         X_val_JP = np.array(self.balanceador.val_JP["Embedding"].tolist())
         y_val_JP = self.balanceador.val_JP["MBTI"].tolist()
         
-        '''
-        hiperparametros = {
-            'n_estimators': [2000],#Aunque sea un numero muy grande, el early stopping hace que no se llegue a ese numero si el modelo no mejora en 15 iteraciones seguidas
-            'max_depth': [5,6,7],
-            'learning_rate': [0.1, 0.05],
-            'subsample': [0.3,0.4,0.6],
+        
+        def objective(trial):
+            hiperparametros = {
+                'n_estimators': trial.suggest_int('n_estimators', 100, 800),#Eligira un numero entre 100 y 800
+                'max_depth': trial.suggest_int('max_depth', 3, 9),
+                'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.3, log=True),
+                
+                'subsample': trial.suggest_float('subsample', 0.6, 1.0),
+                'colsample_bytree': trial.suggest_float('colsample_bytree', 0.5, 1.0),
+                'gamma': trial.suggest_float('gamma', 0.0, 5.0),
+                
+                'tree_method': 'hist',  
+                'device': 'cuda',       
+                'random_state': 42,
+                'n_jobs': 1
+            }
+
+            # Instanciamos el modelo con los parámetros sugeridos por Optuna
+            modelo = XGBClassifier(**hiperparametros)
+
+            score = cross_val_score(modelo, X_train_EI, y_train_EI, cv=3, scoring="f1_macro", n_jobs=-1)
+            return score.mean()
+
+        print("[EJECUCION] Iniciando Estudio Optuna para XGBoost...")
+        estudio = optuna.create_study(direction="maximize")
+        
+        estudio.optimize(objective, n_trials=20, gc_after_trial=True, n_jobs=-1)
+
+        hiperparametros_info = {
+            'E/I': estudio.best_params
         }
 
-        xgb = XGBClassifier(device = "cuda", tree_method="hist",random_state=42, eval_metric="aucpr", early_stopping_rounds=15)
-        #(Maximizar)Usamos aucpr porque es una metrica que se centra en el rendimiento del modelo en la clase minoritaria, lo cual es crucial en nuestro caso de clasificación binaria con clases desbalanceadas.
-        #(Maximizar)F1_macro realiza la media aritmetica de calcular el F1 para cada clase y luego promediarlo.
-        
-        xgb_EI = GridSearchCV(xgb, hiperparametros, scoring="f1_macro", cv=3, n_jobs=1, verbose=1).fit(X_train_EI, y_train_EI, eval_set=[(X_val_EI, y_val_EI)])
-        #xgb_SN = GridSearchCV(xgb, hiperparametros, scoring="accuracy", cv=5, n_jobs=1, verbose=2).fit(X_train_SN, y_train_SN)
-        #xgb_TF = GridSearchCV(xgb, hiperparametros, scoring="accuracy", cv=5, n_jobs=1, verbose=2).fit(X_train_TF, y_train_TF)
-        #xgb_JP = GridSearchCV(xgb, hiperparametros, scoring="accuracy", cv=5, n_jobs=1, verbose=2).fit(X_train_JP, y_train_JP)
-        
-        hiperparametros_info = {
-            'E/I': xgb_EI.best_params_,
-            #'S/N': xgb_SN.best_params_,
-            #'T/F': xgb_TF.best_params_,
-            #'J/P': xgb_JP.best_params_
-        }
-        
+        print(f"[INFO] Mejor combinación de hiperparámetros: {hiperparametros_info}")
         nombre_archivo = "hiperparametros_XGBoost.txt"
         with open(nombre_archivo, 'w') as f:
             f.write(f"Hiperparámetros XGBoost - {self.nombre_modelo}\n")
@@ -79,6 +88,7 @@ class Pipeline:
                 f.write(f"{dimension}: {params}\n")
         
         print(f"[INFO] Hiperparámetros guardados en {nombre_archivo}")
+
         '''
         
         xgb_EI = XGBClassifier(learning_rate=parametros['learning_rate'], max_depth=parametros['max_depth'], n_estimators=parametros['n_estimators'], subsample=parametros['subsample'], device = "cuda", tree_method="hist",random_state=42, eval_metric=parametros['eval_metric'], early_stopping_rounds=parametros['early_stopping_rounds'], verbosity=0)
@@ -106,7 +116,8 @@ class Pipeline:
         os.makedirs("modelos_XGB", exist_ok=True)
         for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
             self.guardar_modelo("modelos_XGB", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
-                  
+        '''       
+      
     def LinearSVM(self, nombre_Archivo, parametros = None):
         if not parametros: # En el caso de que no pasen parametros, se usan unos por defecto
             parametros = {'C': 10, 'class_weight': None, 'loss': 'squared_hinge', 'penalty': 'l2', 'max_iter':10000}
@@ -120,31 +131,41 @@ class Pipeline:
         X_train_JP = np.array(self.balanceador.train_bal_JP["Embedding"].tolist())
         y_train_JP = self.balanceador.train_bal_JP["MBTI"].tolist()
         
-        '''
-        hiperparametros = {
-            'penalty': ['l1','l2'],
-            'loss': ['squared_hinge'],
-            'C': [0.01, 0.1, 1, 10],
-            'class_weight' : ["balanced"]
-        }
+        
+        def objective(trial):
+            hiperparametros = {
+                'penalty': "l2",
+                'loss': trial.suggest_categorical("loss",['hinge', 'squared_hinge']),
+                'C': trial.suggest_float("C", 1e-4, 10.0, log=True),
+                'tol' : trial.suggest_float("tol", 1e-5, 1e-2, log=True),
+                'fit_intercept' : trial.suggest_categorical("fit_intercept", [True, False]),
+                
+                'random_state': 42,
+                'n_jobs': -1,
+                'class_weight': trial.suggest_categorical("class_weight", [None, 'balanced']),
+                'max_iter': 5000,
+                'dual': False
+            }
 
-        lSVM = LinearSVC(random_state=42, dual=False, max_iter=10000)
+            # Instanciamos el modelo con los parámetros sugeridos por Optuna
+            modelo = LinearSVC(**hiperparametros)
 
-        lSVM_EI = GridSearchCV(lSVM, hiperparametros, scoring="f1_macro", cv=3, n_jobs=-1, verbose=1).fit(X_train_EI, y_train_EI)
-        #lSVM_SN = GridSearchCV(lSVM, hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=1).fit(X_train_SN, y_train_SN)
-        #lSVM_TF = GridSearchCV(lSVM, hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=1).fit(X_train_TF, y_train_TF)
-        #lSVM_JP = GridSearchCV(lSVM, hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=1).fit(X_train_JP, y_train_JP)
+            score = cross_val_score(modelo, X_train_EI, y_train_EI, cv=3, scoring="f1_macro", n_jobs=-1)
+            return score.mean()
+
+        print("[EJECUCION] Iniciando Estudio Optuna para LinearSVC...")
+        estudio = optuna.create_study(direction="maximize")
+        
+        estudio.optimize(objective, n_trials=20, gc_after_trial=True, n_jobs=-1)
 
         hiperparametros_info = {
-            'E/I': lSVM_EI.best_params_,
-            #'S/N': lSVM_SN.best_params_,
-            #'T/F': lSVM_TF.best_params_,
-            #'J/P': lSVM_JP.best_params_
+            'E/I': estudio.best_params
         }
-        
-        nombre_archivo = "hiperparametros_LinearSVM.txt"
+
+        print(f"[INFO] Mejor combinación de hiperparámetros: {hiperparametros_info}")
+        nombre_archivo = "hiperparametros_LinearSVC.txt"
         with open(nombre_archivo, 'w') as f:
-            f.write(f"Hiperparámetros LinearSVM - {self.nombre_modelo}\n")
+            f.write(f"Hiperparámetros LinearSVC - {self.nombre_modelo}\n")
             f.write("="*50 + "\n\n")
             for dimension, params in hiperparametros_info.items():
                 f.write(f"{dimension}: {params}\n")
@@ -174,6 +195,7 @@ class Pipeline:
         os.makedirs("modelos_LinearSVM", exist_ok=True)
         for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
             self.guardar_modelo("modelos_LinearSVM", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
+        '''
 
     def RL(self, nombre_Archivo, parametros = None):
 
@@ -192,33 +214,44 @@ class Pipeline:
         X_train_JP = np.array(self.balanceador.train_JP["Embedding"].tolist())
         y_train_JP = self.balanceador.train_JP["MBTI"].tolist()
         
-        '''
-        hiperparametros = {
-            'C': [0.1, 1, 10, 50, 100],
-            'penalty': ['l2'],
-            'solver': ['lbfgs','liblinear', 'saga'],
-            'class_weight': ['balanced']
-        }
-        lr_EI = GridSearchCV(LogisticRegression(max_iter=5000, random_state=42), hiperparametros, scoring="f1_macro", cv=3, n_jobs=-1, verbose=3).fit(X_train_EI, y_train_EI)
-        #lr_SN = GridSearchCV(LogisticRegression(max_iter=2000, random_state=42), hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=3).fit(X_train_SN, y_train_SN)
-        #lr_TF = GridSearchCV(LogisticRegression(max_iter=2000, random_state=42), hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=3).fit(X_train_TF, y_train_TF)
-        #lr_JP = GridSearchCV(LogisticRegression(max_iter=2000, random_state=42), hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=3).fit(X_train_JP, y_train_JP)
         
+        def objective(trial):
+            hiperparametros = {
+                'penalty': trial.suggest_categorical("penalty",["l1","l2",None]),
+                'C': trial.suggest_float("C", 1.0, 50.0, log=True),
+                'solver': trial.suggest_categorical("solver", ['lbfgs', 'liblinear', 'newton-cg']),
+                'tol' : trial.suggest_float("tol", 1e-5, 1e-2, log=True),
+                'random_state': 42,
+                'n_jobs': -1,
+                'class_weight': trial.suggest_categorical("class_weight", [None, 'balanced']),
+                'max_iter': 5000
+            }
+
+            # Instanciamos el modelo con los parámetros sugeridos por Optuna
+            modelo = LogisticRegression(**hiperparametros)
+
+            score = cross_val_score(modelo, X_train_EI, y_train_EI, cv=3, scoring="f1_macro", n_jobs=-1)
+            return score.mean()
+
+        print("[EJECUCION] Iniciando Estudio Optuna para LogisticRegresion...")
+        estudio = optuna.create_study(direction="maximize")
+        
+        estudio.optimize(objective, n_trials=20, gc_after_trial=True, n_jobs=-1)
+
         hiperparametros_info = {
-            'E/I': lr_EI.best_params_,
-            #'S/N': lr_SN.best_params_,
-            #'T/F': lr_TF.best_params_,
-            #'J/P': lr_JP.best_params_
+            'E/I': estudio.best_params
         }
+
         print(f"[INFO] Mejor combinación de hiperparámetros: {hiperparametros_info}")
-        nombre_archivo = "hiperparametros_LogisticRegression.txt"
+        nombre_archivo = "hiperparametros_LogisticRegresion.txt"
         with open(nombre_archivo, 'w') as f:
-            f.write(f"Hiperparámetros Regresión Logística - {self.nombre_modelo}\n")
+            f.write(f"Hiperparámetros LogisticRegresion - {self.nombre_modelo}\n")
             f.write("="*50 + "\n\n")
             for dimension, params in hiperparametros_info.items():
                 f.write(f"{dimension}: {params}\n")
         
         print(f"[INFO] Hiperparámetros guardados en {nombre_archivo}")
+
         '''
         
         lr_EI = LogisticRegression(C=parametros["C"], penalty=parametros["penalty"], solver=parametros["solver"], class_weight=parametros["class_weight"], max_iter=5000, random_state=42, verbose=0).fit(X_train_EI, y_train_EI)
@@ -242,7 +275,8 @@ class Pipeline:
         os.makedirs("modelos_LR", exist_ok=True)
         for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
             self.guardar_modelo("modelos_LR", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
-
+        '''
+            
     def KNC(self, nombre_Archivo, parametros = None):
         if not parametros:
             parametros = {
@@ -263,18 +297,28 @@ class Pipeline:
         
         X_train_JP = np.array(self.balanceador.train_JP["Embedding"].tolist())
         y_train_JP = self.balanceador.train_JP["MBTI"].tolist()
-        '''
-        hiperparametros = {
-            "n_neighbors": [2,3,5],
-            "weights": [ 'distance'],
-            "algorithm": ['ball_tree'],
-            "leaf_size": [5,10,15],
-        }
+        
+        def objective(trial):
+            hiperparametros = {
+                'n_neighbors': trial.suggest_int("n_neighbors", 1, 15),
+                'weights': trial.suggest_categorical("weights", ['uniform', 'distance']),
+                'algorithm': trial.suggest_categorical("algorithm", ['auto', 'ball_tree', 'kd_tree', 'brute']),
+                'leaf_size': trial.suggest_int("leaf_size", 5, 40),
+                'metric': trial.suggest_categorical("metric", ['minkowski', 'euclidean', 'cosine']),
+                'n_jobs': -1 
+            }
+            modelo = KNeighborsClassifier(**hiperparametros)
 
-        knc_EI = GridSearchCV(KNeighborsClassifier(), hiperparametros, scoring="f1_macro", cv=3, n_jobs=-1, verbose=3).fit(X_train_EI, y_train_EI)
+            score = cross_val_score(modelo, X_train_EI, y_train_EI, cv=3, scoring="f1_macro", n_jobs=-1)
+            return score.mean()
+
+        print("[EJECUCION] Iniciando Estudio Optuna para KNeighborsClassifier...")
+        estudio = optuna.create_study(direction="maximize")
+        
+        estudio.optimize(objective, n_trials=20, gc_after_trial=True, n_jobs=-1)
 
         hiperparametros_info = {
-            'E/I': knc_EI.best_params_
+            'E/I': estudio.best_params
         }
 
         print(f"[INFO] Mejor combinación de hiperparámetros: {hiperparametros_info}")
@@ -286,6 +330,8 @@ class Pipeline:
                 f.write(f"{dimension}: {params}\n")
         
         print(f"[INFO] Hiperparámetros guardados en {nombre_archivo}")
+
+
         '''
         knc_EI = KNeighborsClassifier(n_neighbors=parametros["n_neighbors"], weights=parametros["weights"], algorithm=parametros["algorithm"], leaf_size=parametros["leaf_size"], n_jobs=-1).fit(X_train_EI, y_train_EI)
         print("[INFO] Modelo E/I entrenado.")
@@ -308,7 +354,8 @@ class Pipeline:
         os.makedirs("modelos_LR", exist_ok=True)
         for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
             self.guardar_modelo("modelos_LR", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
-        
+        '''
+            
     def DTC(self, nombre_Archivo, parametros = None):
         if not parametros:
             parametros = {
@@ -327,29 +374,45 @@ class Pipeline:
         
         X_train_JP = np.array(self.balanceador.train_JP["Embedding"].tolist())
         y_train_JP = self.balanceador.train_JP["MBTI"].tolist()
-        '''
-        hiperparametros = {
-            "n_neighbors": [2,3,5],
-            "weights": [ 'distance'],
-            "algorithm": ['ball_tree'],
-            "leaf_size": [5,10,15],
-        }
+        
+        def objective(trial):
+            hiperparametros = {
+                'criterion': trial.suggest_categorical("criterion", ["gini", "entropy"]),
+                'max_depth': trial.suggest_int("max_depth", 3, 20),
+                'min_samples_split': trial.suggest_int("min_samples_split", 2, 50),
+                'min_samples_leaf': trial.suggest_int("min_samples_leaf", 1, 20),
+                'max_features': trial.suggest_categorical("max_features", [None, "sqrt", "log2"]),
+                'class_weight': trial.suggest_categorical("class_weight", [None, "balanced"]),
+                'random_state': 42
+            }
 
-        knc_EI = GridSearchCV(KNeighborsClassifier(), hiperparametros, scoring="f1_macro", cv=3, n_jobs=-1, verbose=3).fit(X_train_EI, y_train_EI)
+            # Instanciamos el modelo con los parámetros sugeridos por Optuna
+            modelo = DecisionTreeClassifier(**hiperparametros)
+
+            # Ojo: DecisionTree no usa n_jobs internamente en el modelo, pero cross_val_score sí
+            score = cross_val_score(modelo, X_train_EI, y_train_EI, cv=3, scoring="f1_macro", n_jobs=-1)
+            return score.mean()
+
+        print("[EJECUCION] Iniciando Estudio Optuna para DTC...")
+        estudio = optuna.create_study(direction="maximize")
+        
+        # El árbol simple es muy rápido de entrenar, 30 iteraciones se harán en nada
+        estudio.optimize(objective, n_trials=30, gc_after_trial=True, n_jobs=-1)
 
         hiperparametros_info = {
-            'E/I': knc_EI.best_params_
+            'E/I': estudio.best_params
         }
 
         print(f"[INFO] Mejor combinación de hiperparámetros: {hiperparametros_info}")
-        nombre_archivo = "hiperparametros_KNC.txt"
+        nombre_archivo = "hiperparametros_DTC.txt"
         with open(nombre_archivo, 'w') as f:
-            f.write(f"Hiperparámetros KNC - {self.nombre_modelo}\n")
+            f.write(f"Hiperparámetros DTC - {self.nombre_modelo}\n")
             f.write("="*50 + "\n\n")
             for dimension, params in hiperparametros_info.items():
                 f.write(f"{dimension}: {params}\n")
         
         print(f"[INFO] Hiperparámetros guardados en {nombre_archivo}")
+
         '''
         dtc_EI = DecisionTreeClassifier().fit(X_train_EI, y_train_EI)
         print("[INFO] Modelo E/I entrenado.")
@@ -372,7 +435,8 @@ class Pipeline:
         os.makedirs("modelos_LR", exist_ok=True)
         for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
             self.guardar_modelo("modelos_LR", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
-
+        '''
+        
     def MLP(self, nombre_Archivo, parametros = None):
         if not parametros:
             parametros = {'hidden_layer_sizes': (256, 128, 64), 'activation': 'tanh', 'solver': 'adam', 'learning_rate': 'constant', 'learning_rate_init': 0.001}
@@ -573,12 +637,12 @@ def pipeline_modelo_entreno(modelo:str):
     #pipelineENN = Pipeline(nombre_modelo=modelo, balanceador=balENN)
     #pipelineAKNN = Pipeline(nombre_modelo=modelo, balanceador=balAKNN)
 
-    #ejecutar_pipelines([pipelineAKNN], preprocesar=False, algoritmo="RL", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
-    #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN], preprocesar=False, algoritmo="XGBoost", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
-    #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN], preprocesar=False, algoritmo="LinearSVM", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
-    #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN], preprocesar=False, algoritmo="MLP", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
-    #ejecutar_pipelines([pipelineSMOTE], preprocesar=False, algoritmo="KNC", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
-    #ejecutar_pipelines([pipelineSMOTE], preprocesar=False, algoritmo="DTC", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    ejecutar_pipelines([pipelineSMOTE], preprocesar=False, algoritmo="RL", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    ejecutar_pipelines([pipelineSMOTE], preprocesar=False, algoritmo="XGBoost", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    ejecutar_pipelines([pipelineSMOTE], preprocesar=False, algoritmo="LinearSVM", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    ejecutar_pipelines([pipelineSMOTE], preprocesar=False, algoritmo="MLP", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    ejecutar_pipelines([pipelineSMOTE], preprocesar=False, algoritmo="KNC", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    ejecutar_pipelines([pipelineSMOTE], preprocesar=False, algoritmo="DTC", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
     ejecutar_pipelines([pipelineSMOTE], preprocesar=False, algoritmo="MLP", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
     
 
