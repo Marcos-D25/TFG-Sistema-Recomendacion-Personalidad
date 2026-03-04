@@ -1,12 +1,16 @@
 import os
 import pandas as pd
 import numpy as np
-from balanceador import Balanceador, BalanceadorSMOTE, BalanceadorBorderlineSMOTE, BalanceadorADASYN
+from balanceador import *
 from procesador import Preprocesador
 from sklearn.model_selection import GridSearchCV
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import LinearSVC
 from sklearn.metrics import classification_report, confusion_matrix, precision_recall_fscore_support, accuracy_score
+from sklearn.ensemble import RandomForestClassifier 
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
 import joblib
 from openpyxl import load_workbook
 from xgboost import XGBClassifier
@@ -14,40 +18,6 @@ from torch import nn
 from skorch import NeuralNetClassifier
 from skorch.callbacks import EarlyStopping
 from torch.optim import Adam
-
-class MLPClassifierPropio (nn.Module):
-    def __init__(self, num_neuronas,dropout_rate, activacion=nn.ReLU()):
-        super(MLPClassifierPropio, self).__init__()
-        self.num_neuronas = num_neuronas
-        self.activacion = activacion
-        
-        self.capa_entrada = nn.Linear(768, self.num_neuronas)  # Capa de entrada (768 embeddings)
-        self.dropout = nn.Dropout(dropout_rate)
-        self.capa_salida =  nn.Linear(self.num_neuronas, 2)  # Capa de salida (2 clases por rasgo de personalidad)
-
-    def forward(self, x):
-        x = self.capa_entrada(x)
-        x = self.activacion(x)
-        x = self.dropout(x)
-        x = self.capa_salida(x)
-        return x
-
-class MLPClassifierLargePropio (nn.Module):
-    def __init__(self, num_neuronas,dropout_rate, activacion=nn.ReLU()):
-        super().__init__()
-        self.num_neuronas = num_neuronas
-        self.activacion = activacion
-        
-        self.capa_entrada = nn.Linear(1024, self.num_neuronas)  # Capa de entrada (768 embeddings)
-        self.dropout = nn.Dropout(dropout_rate)
-        self.capa_salida =  nn.Linear(self.num_neuronas, 2)  # Capa de salida (2 clases por rasgo de personalidad)
-
-    def forward(self, x):
-        x = self.capa_entrada(x)
-        x = self.activacion(x)
-        x = self.dropout(x)
-        x = self.capa_salida(x)
-        return x
 
 class Pipeline:
     def __init__(self, nombre_modelo, balanceador:Balanceador=None):
@@ -151,6 +121,7 @@ class Pipeline:
         y_train_TF = self.balanceador.train_bal_TF["MBTI"].tolist()
         X_train_JP = np.array(self.balanceador.train_bal_JP["Embedding"].tolist())
         y_train_JP = self.balanceador.train_bal_JP["MBTI"].tolist()
+        
         '''
         hiperparametros = {
             'penalty': ['l1','l2'],
@@ -205,308 +176,23 @@ class Pipeline:
         os.makedirs("modelos_LinearSVM", exist_ok=True)
         for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
             self.guardar_modelo("modelos_LinearSVM", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
-        
-    def MLP_Propio(self, nombre_Archivo, parametros = None):
-        if not parametros: # En el caso de que no pasen parametros, se usan unos por defecto
-            parametros =  {'batch_size': 256, 'module__activacion': nn.ReLU(),
-                            'module__dropout_rate': 0.3, 'module__num_neuronas': 256, 
-                            'optimizer__lr': 0.0005, 'optimizer__weight_decay': 0.0001, 'max_epochs': 600}
-        X_train_EI = np.array(self.balanceador.train_bal_EI["Embedding"].tolist(), dtype=np.float32)
-        y_train_EI = np.array(self.balanceador.train_bal_EI["MBTI"].tolist(), dtype=np.int64)
-        X_train_SN = np.array(self.balanceador.train_bal_SN["Embedding"].tolist(), dtype=np.float32)
-        y_train_SN = np.array(self.balanceador.train_bal_SN["MBTI"].tolist(), dtype=np.int64)
-        X_train_TF = np.array(self.balanceador.train_bal_TF["Embedding"].tolist(), dtype=np.float32)
-        y_train_TF = np.array(self.balanceador.train_bal_TF["MBTI"].tolist(), dtype=np.int64)
-        X_train_JP = np.array(self.balanceador.train_bal_JP["Embedding"].tolist(), dtype=np.float32)
-        y_train_JP = np.array(self.balanceador.train_bal_JP["MBTI"].tolist(), dtype=np.int64)
-        
-        '''
-        #Buscamos la combinacion de hiperparametros que reduzca el train_loss y el valid_loss a la vez. Tambien que aumente el accuracy
-        hiperparametros = {
-            'module__num_neuronas': [256, 512], #Modifica las variables de mi clase
-            'module__dropout_rate': [0.3,0.5],
-            'module__activacion': [nn.ReLU()], 
-            'optimizer__lr': [0.0005, 0.0001], #Modifica los parametros del optimizador
-            'optimizer__weight_decay': [1e-4,1e-3],
-            'batch_size': [128,256]
-        }
-
-        mlp = NeuralNetClassifier(
-            module = MLPClassifierPropio,
-            criterion=nn.CrossEntropyLoss,
-            optimizer=Adam,
-            max_epochs=600,
-            callbacks=[EarlyStopping(patience=15, monitor='valid_loss')],#Para evitar overfitting
-            device="cuda",
-            verbose=1
-        )
-
-        mlp_EI = GridSearchCV(mlp, hiperparametros, scoring="f1_macro", cv=3, n_jobs=1).fit(X_train_EI, y_train_EI)
-        #mlp_SN = GridSearchCV(mlp, hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=1).fit(X_train_SN, y_train_SN)
-        #mlp_TF = GridSearchCV(mlp, hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=1).fit(X_train_TF, y_train_TF)
-        #mlp_JP = GridSearchCV(mlp, hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=1).fit(X_train_JP, y_train_JP)
-
-        hiperparametros_info = {
-            'E/I': mlp_EI.best_params_,
-            #'S/N': mlp_SN.best_params_,
-            #'T/F': mlp_TF.best_params_,
-            #'J/P': mlp_JP.best_params_
-        }
-        
-        nombre_archivo = "hiperparametros_MLP.txt"
-        with open(nombre_archivo, 'w') as f:
-            f.write(f"Hiperparámetros MLP - {self.nombre_modelo}\n")
-            f.write("="*50 + "\n\n")
-            for dimension, params in hiperparametros_info.items():
-                f.write(f"{dimension}: {params}\n")
-        
-        print(f"[INFO] Hiperparámetros guardados en {nombre_archivo}")
-        
-        '''
-        
-        mlp_EI = NeuralNetClassifier(
-            module = MLPClassifierPropio,
-            criterion=nn.CrossEntropyLoss,
-            optimizer=Adam,
-            batch_size=parametros['batch_size'],
-            max_epochs=parametros['max_epochs'],
-            module__activacion=parametros['module__activacion'],
-            module__dropout_rate = parametros["module__dropout_rate"],
-            module__num_neuronas=parametros['module__num_neuronas'],
-            optimizer__lr=parametros['optimizer__lr'],
-            optimizer__weight_decay=parametros["optimizer__weight_decay"],
-            callbacks=[EarlyStopping(patience=15, monitor='valid_loss')],
-            device="cuda",
-            verbose=0
-        ).fit(X_train_EI, y_train_EI)
-        
-        print("[INFO] Modelo E/I entrenado.")
-        
-        mlp_SN = NeuralNetClassifier(
-           module = MLPClassifierPropio,
-            criterion=nn.CrossEntropyLoss,
-            optimizer=Adam,
-            batch_size=parametros['batch_size'],
-            max_epochs=parametros['max_epochs'],
-            module__activacion=parametros['module__activacion'],
-            module__dropout_rate = parametros["module__dropout_rate"],
-            module__num_neuronas=parametros['module__num_neuronas'],
-            optimizer__lr=parametros['optimizer__lr'],
-            optimizer__weight_decay=parametros["optimizer__weight_decay"],
-            callbacks=[EarlyStopping(patience=15, monitor='valid_loss')],
-            device="cuda",
-            verbose=0
-        ).fit(X_train_SN, y_train_SN)
-        
-        print("[INFO] Modelo S/N entrenado.")
-        
-        mlp_TF = NeuralNetClassifier(
-            module = MLPClassifierPropio,
-            criterion=nn.CrossEntropyLoss,
-            optimizer=Adam,
-            batch_size=parametros['batch_size'],
-            max_epochs=parametros['max_epochs'],
-            module__activacion=parametros['module__activacion'],
-            module__dropout_rate = parametros["module__dropout_rate"],
-            module__num_neuronas=parametros['module__num_neuronas'],
-            optimizer__lr=parametros['optimizer__lr'],
-            optimizer__weight_decay=parametros["optimizer__weight_decay"],
-            callbacks=[EarlyStopping(patience=15, monitor='valid_loss')],
-            device="cuda",
-            verbose=0
-        ).fit(X_train_TF, y_train_TF)
-        
-        print("[INFO] Modelo T/F entrenado.")
-        
-        mlp_JP = NeuralNetClassifier(
-            module = MLPClassifierPropio,
-            criterion=nn.CrossEntropyLoss,
-            optimizer=Adam,
-            batch_size=parametros['batch_size'],
-            max_epochs=parametros['max_epochs'],
-            module__activacion=parametros['module__activacion'],
-            module__dropout_rate = parametros["module__dropout_rate"],
-            module__num_neuronas=parametros['module__num_neuronas'],
-            optimizer__lr=parametros['optimizer__lr'],
-            optimizer__weight_decay=parametros["optimizer__weight_decay"],
-            callbacks=[EarlyStopping(patience=15, monitor='valid_loss')],
-            device="cuda",
-            verbose=0
-        ).fit(X_train_JP, y_train_JP)
-        
-        print("[INFO] Modelo J/P entrenado.")
-        
-        self.modelos = { 
-            'EI': mlp_EI,
-            'SN': mlp_SN,
-            'TF': mlp_TF,
-            'JP': mlp_JP
-        }
-       
-
-        self.guardar_resultados(nombre_Archivo=nombre_Archivo, metodo_balanceo=self.nombre_balanceador, parametros_str=str(parametros), modelo_clasificacion="MLP")
-        os.makedirs("modelos_ML", exist_ok=True)
-        for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
-            self.guardar_modelo("modelos_ML", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
-    
-    def MLP_PropioLarge(self, nombre_Archivo, parametros = None):
-        if not parametros: # En el caso de que no pasen parametros, se usan unos por defecto
-            parametros =  {'batch_size': 256, 'module__activacion': nn.ReLU(),
-                            'module__dropout_rate': 0.3, 'module__num_neuronas': 256, 
-                            'optimizer__lr': 0.0005, 'optimizer__weight_decay': 0.0001, 'max_epochs': 600}
-        X_train_EI = np.array(self.balanceador.train_bal_EI["Embedding"].tolist(), dtype=np.float32)
-        y_train_EI = np.array(self.balanceador.train_bal_EI["MBTI"].tolist(), dtype=np.int64)
-        X_train_SN = np.array(self.balanceador.train_bal_SN["Embedding"].tolist(), dtype=np.float32)
-        y_train_SN = np.array(self.balanceador.train_bal_SN["MBTI"].tolist(), dtype=np.int64)
-        X_train_TF = np.array(self.balanceador.train_bal_TF["Embedding"].tolist(), dtype=np.float32)
-        y_train_TF = np.array(self.balanceador.train_bal_TF["MBTI"].tolist(), dtype=np.int64)
-        X_train_JP = np.array(self.balanceador.train_bal_JP["Embedding"].tolist(), dtype=np.float32)
-        y_train_JP = np.array(self.balanceador.train_bal_JP["MBTI"].tolist(), dtype=np.int64)
-        
-        '''
-        #Buscamos la combinacion de hiperparametros que reduzca el train_loss y el valid_loss a la vez. Tambien que aumente el accuracy
-        hiperparametros = {
-            'module__num_neuronas': [256, 512], #Modifica las variables de mi clase
-            'module__dropout_rate': [0.3,0.5],
-            'module__activacion': [nn.ReLU()], 
-            'optimizer__lr': [0.0005, 0.0001], #Modifica los parametros del optimizador
-            'optimizer__weight_decay': [1e-4,1e-3],
-            'batch_size': [128,256]
-        }
-
-        mlp = NeuralNetClassifier(
-            module = MLPClassifierPropio,
-            criterion=nn.CrossEntropyLoss,
-            optimizer=Adam,
-            max_epochs=600,
-            callbacks=[EarlyStopping(patience=15, monitor='valid_loss')],#Para evitar overfitting
-            device="cuda",
-            verbose=1
-        )
-
-        mlp_EI = GridSearchCV(mlp, hiperparametros, scoring="f1_macro", cv=3, n_jobs=1).fit(X_train_EI, y_train_EI)
-        #mlp_SN = GridSearchCV(mlp, hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=1).fit(X_train_SN, y_train_SN)
-        #mlp_TF = GridSearchCV(mlp, hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=1).fit(X_train_TF, y_train_TF)
-        #mlp_JP = GridSearchCV(mlp, hiperparametros, scoring="accuracy", cv=5, n_jobs=-1, verbose=1).fit(X_train_JP, y_train_JP)
-
-        hiperparametros_info = {
-            'E/I': mlp_EI.best_params_,
-            #'S/N': mlp_SN.best_params_,
-            #'T/F': mlp_TF.best_params_,
-            #'J/P': mlp_JP.best_params_
-        }
-        
-        nombre_archivo = "hiperparametros_MLP.txt"
-        with open(nombre_archivo, 'w') as f:
-            f.write(f"Hiperparámetros MLP - {self.nombre_modelo}\n")
-            f.write("="*50 + "\n\n")
-            for dimension, params in hiperparametros_info.items():
-                f.write(f"{dimension}: {params}\n")
-        
-        print(f"[INFO] Hiperparámetros guardados en {nombre_archivo}")
-        
-        '''
-        
-        mlp_EI = NeuralNetClassifier(
-            module = MLPClassifierLargePropio,
-            criterion=nn.CrossEntropyLoss,
-            optimizer=Adam,
-            batch_size=parametros['batch_size'],
-            max_epochs=parametros['max_epochs'],
-            module__activacion=parametros['module__activacion'],
-            module__dropout_rate = parametros["module__dropout_rate"],
-            module__num_neuronas=parametros['module__num_neuronas'],
-            optimizer__lr=parametros['optimizer__lr'],
-            optimizer__weight_decay=parametros["optimizer__weight_decay"],
-            callbacks=[EarlyStopping(patience=15, monitor='valid_loss')],
-            device="cuda",
-            verbose=0
-        ).fit(X_train_EI, y_train_EI)
-        
-        print("[INFO] Modelo E/I entrenado.")
-        
-        mlp_SN = NeuralNetClassifier(
-           module = MLPClassifierLargePropio,
-            criterion=nn.CrossEntropyLoss,
-            optimizer=Adam,
-            batch_size=parametros['batch_size'],
-            max_epochs=parametros['max_epochs'],
-            module__activacion=parametros['module__activacion'],
-            module__dropout_rate = parametros["module__dropout_rate"],
-            module__num_neuronas=parametros['module__num_neuronas'],
-            optimizer__lr=parametros['optimizer__lr'],
-            optimizer__weight_decay=parametros["optimizer__weight_decay"],
-            callbacks=[EarlyStopping(patience=15, monitor='valid_loss')],
-            device="cuda",
-            verbose=0
-        ).fit(X_train_SN, y_train_SN)
-        
-        print("[INFO] Modelo S/N entrenado.")
-        
-        mlp_TF = NeuralNetClassifier(
-            module = MLPClassifierLargePropio,
-            criterion=nn.CrossEntropyLoss,
-            optimizer=Adam,
-            batch_size=parametros['batch_size'],
-            max_epochs=parametros['max_epochs'],
-            module__activacion=parametros['module__activacion'],
-            module__dropout_rate = parametros["module__dropout_rate"],
-            module__num_neuronas=parametros['module__num_neuronas'],
-            optimizer__lr=parametros['optimizer__lr'],
-            optimizer__weight_decay=parametros["optimizer__weight_decay"],
-            callbacks=[EarlyStopping(patience=15, monitor='valid_loss')],
-            device="cuda",
-            verbose=0
-        ).fit(X_train_TF, y_train_TF)
-        
-        print("[INFO] Modelo T/F entrenado.")
-        
-        mlp_JP = NeuralNetClassifier(
-            module = MLPClassifierLargePropio,
-            criterion=nn.CrossEntropyLoss,
-            optimizer=Adam,
-            batch_size=parametros['batch_size'],
-            max_epochs=parametros['max_epochs'],
-            module__activacion=parametros['module__activacion'],
-            module__dropout_rate = parametros["module__dropout_rate"],
-            module__num_neuronas=parametros['module__num_neuronas'],
-            optimizer__lr=parametros['optimizer__lr'],
-            optimizer__weight_decay=parametros["optimizer__weight_decay"],
-            callbacks=[EarlyStopping(patience=15, monitor='valid_loss')],
-            device="cuda",
-            verbose=0
-        ).fit(X_train_JP, y_train_JP)
-        
-        print("[INFO] Modelo J/P entrenado.")
-        
-        self.modelos = { 
-            'EI': mlp_EI,
-            'SN': mlp_SN,
-            'TF': mlp_TF,
-            'JP': mlp_JP
-        }
-       
-
-        self.guardar_resultados(nombre_Archivo=nombre_Archivo, metodo_balanceo=self.nombre_balanceador, parametros_str=str(parametros), modelo_clasificacion="MLP")
-        os.makedirs("modelos_ML", exist_ok=True)
-        for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
-            self.guardar_modelo("modelos_ML", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
 
     def RL(self, nombre_Archivo, parametros = None):
+
         if not parametros: # En el caso de que no pasen parametros, se usan unos por defecto
-            parametros={'C': 10, 'class_weight': 'balanced', 'penalty': 'l2', 'solver': 'lbfgs'}
+            parametros={'C': 10, 'class_weight': None, 'penalty': 'l2', 'solver': 'lbfgs'}
 
-        X_train_EI = np.array(self.balanceador.train_bal_EI["Embedding"].tolist())
-        y_train_EI = self.balanceador.train_bal_EI["MBTI"].tolist()
+        X_train_EI = np.array(self.balanceador.train_EI["Embedding"].tolist())
+        y_train_EI = self.balanceador.train_EI["MBTI"].tolist()
 
-        X_train_SN = np.array(self.balanceador.train_bal_SN["Embedding"].tolist())
-        y_train_SN = self.balanceador.train_bal_SN["MBTI"].tolist()
+        X_train_SN = np.array(self.balanceador.train_SN["Embedding"].tolist())
+        y_train_SN = self.balanceador.train_SN["MBTI"].tolist()
         
-        X_train_TF = np.array(self.balanceador.train_bal_TF["Embedding"].tolist())
-        y_train_TF = self.balanceador.train_bal_TF["MBTI"].tolist()
+        X_train_TF = np.array(self.balanceador.train_TF["Embedding"].tolist())
+        y_train_TF = self.balanceador.train_TF["MBTI"].tolist()
         
-        X_train_JP = np.array(self.balanceador.train_bal_JP["Embedding"].tolist())
-        y_train_JP = self.balanceador.train_bal_JP["MBTI"].tolist()
+        X_train_JP = np.array(self.balanceador.train_JP["Embedding"].tolist())
+        y_train_JP = self.balanceador.train_JP["MBTI"].tolist()
         
         '''
         hiperparametros = {
@@ -558,7 +244,199 @@ class Pipeline:
         os.makedirs("modelos_LR", exist_ok=True)
         for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
             self.guardar_modelo("modelos_LR", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
-       
+
+    def KNC(self, nombre_Archivo, parametros = None):
+        if not parametros:
+            parametros = {
+                "n_neighbors": 3,
+                "weights": 'distance',
+                "algorithm": 'ball_tree',
+                "leaf_size": 10
+            }
+
+        X_train_EI = np.array(self.balanceador.train_EI["Embedding"].tolist())
+        y_train_EI = self.balanceador.train_EI["MBTI"].tolist()
+
+        X_train_SN = np.array(self.balanceador.train_SN["Embedding"].tolist())
+        y_train_SN = self.balanceador.train_SN["MBTI"].tolist()
+        
+        X_train_TF = np.array(self.balanceador.train_TF["Embedding"].tolist())
+        y_train_TF = self.balanceador.train_TF["MBTI"].tolist()
+        
+        X_train_JP = np.array(self.balanceador.train_JP["Embedding"].tolist())
+        y_train_JP = self.balanceador.train_JP["MBTI"].tolist()
+        '''
+        hiperparametros = {
+            "n_neighbors": [2,3,5],
+            "weights": [ 'distance'],
+            "algorithm": ['ball_tree'],
+            "leaf_size": [5,10,15],
+        }
+
+        knc_EI = GridSearchCV(KNeighborsClassifier(), hiperparametros, scoring="f1_macro", cv=3, n_jobs=-1, verbose=3).fit(X_train_EI, y_train_EI)
+
+        hiperparametros_info = {
+            'E/I': knc_EI.best_params_
+        }
+
+        print(f"[INFO] Mejor combinación de hiperparámetros: {hiperparametros_info}")
+        nombre_archivo = "hiperparametros_KNC.txt"
+        with open(nombre_archivo, 'w') as f:
+            f.write(f"Hiperparámetros KNC - {self.nombre_modelo}\n")
+            f.write("="*50 + "\n\n")
+            for dimension, params in hiperparametros_info.items():
+                f.write(f"{dimension}: {params}\n")
+        
+        print(f"[INFO] Hiperparámetros guardados en {nombre_archivo}")
+        '''
+        knc_EI = KNeighborsClassifier(n_neighbors=parametros["n_neighbors"], weights=parametros["weights"], algorithm=parametros["algorithm"], leaf_size=parametros["leaf_size"], n_jobs=-1).fit(X_train_EI, y_train_EI)
+        print("[INFO] Modelo E/I entrenado.")
+        knc_SN = KNeighborsClassifier(n_neighbors=parametros["n_neighbors"], weights=parametros["weights"], algorithm=parametros["algorithm"], leaf_size=parametros["leaf_size"], n_jobs=-1).fit(X_train_SN, y_train_SN)
+        print("[INFO] Modelo S/N entrenado.")
+        knc_TF = KNeighborsClassifier(n_neighbors=parametros["n_neighbors"], weights=parametros["weights"], algorithm=parametros["algorithm"], leaf_size=parametros["leaf_size"], n_jobs=-1).fit(X_train_TF, y_train_TF)
+        print("[INFO] Modelo T/F entrenado.")
+        knc_JP = KNeighborsClassifier(n_neighbors=parametros["n_neighbors"], weights=parametros["weights"], algorithm=parametros["algorithm"], leaf_size=parametros["leaf_size"], n_jobs=-1).fit(X_train_JP, y_train_JP)
+        print("[INFO] Modelo J/P entrenado.")
+        
+        #Diccionario para almacenar los modelos entrenados
+        self.modelos = { 
+            'EI': knc_EI,
+            'SN': knc_SN,
+            'TF': knc_TF,
+            'JP': knc_JP
+        }
+
+        self.guardar_resultados(nombre_Archivo=nombre_Archivo, metodo_balanceo=self.nombre_balanceador, parametros_str=str(parametros), modelo_clasificacion="KNeighboursClassifier")
+        os.makedirs("modelos_LR", exist_ok=True)
+        for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
+            self.guardar_modelo("modelos_LR", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
+        
+    def DTC(self, nombre_Archivo, parametros = None):
+        if not parametros:
+            parametros = {
+                "criterion": ['gini', 'entropy', 'log_loss'],
+
+            }
+
+        X_train_EI = np.array(self.balanceador.train_EI["Embedding"].tolist())
+        y_train_EI = self.balanceador.train_EI["MBTI"].tolist()
+
+        X_train_SN = np.array(self.balanceador.train_SN["Embedding"].tolist())
+        y_train_SN = self.balanceador.train_SN["MBTI"].tolist()
+        
+        X_train_TF = np.array(self.balanceador.train_TF["Embedding"].tolist())
+        y_train_TF = self.balanceador.train_TF["MBTI"].tolist()
+        
+        X_train_JP = np.array(self.balanceador.train_JP["Embedding"].tolist())
+        y_train_JP = self.balanceador.train_JP["MBTI"].tolist()
+        '''
+        hiperparametros = {
+            "n_neighbors": [2,3,5],
+            "weights": [ 'distance'],
+            "algorithm": ['ball_tree'],
+            "leaf_size": [5,10,15],
+        }
+
+        knc_EI = GridSearchCV(KNeighborsClassifier(), hiperparametros, scoring="f1_macro", cv=3, n_jobs=-1, verbose=3).fit(X_train_EI, y_train_EI)
+
+        hiperparametros_info = {
+            'E/I': knc_EI.best_params_
+        }
+
+        print(f"[INFO] Mejor combinación de hiperparámetros: {hiperparametros_info}")
+        nombre_archivo = "hiperparametros_KNC.txt"
+        with open(nombre_archivo, 'w') as f:
+            f.write(f"Hiperparámetros KNC - {self.nombre_modelo}\n")
+            f.write("="*50 + "\n\n")
+            for dimension, params in hiperparametros_info.items():
+                f.write(f"{dimension}: {params}\n")
+        
+        print(f"[INFO] Hiperparámetros guardados en {nombre_archivo}")
+        '''
+        dtc_EI = DecisionTreeClassifier().fit(X_train_EI, y_train_EI)
+        print("[INFO] Modelo E/I entrenado.")
+        dtc_SN = DecisionTreeClassifier().fit(X_train_SN, y_train_SN)
+        print("[INFO] Modelo S/N entrenado.")
+        dtc_TF = DecisionTreeClassifier().fit(X_train_TF, y_train_TF)
+        print("[INFO] Modelo T/F entrenado.")
+        dtc_JP = DecisionTreeClassifier().fit(X_train_JP, y_train_JP)
+        print("[INFO] Modelo J/P entrenado.")
+        
+        #Diccionario para almacenar los modelos entrenados
+        self.modelos = { 
+            'EI': dtc_EI,
+            'SN': dtc_SN,
+            'TF': dtc_TF,
+            'JP': dtc_JP
+        }
+
+        self.guardar_resultados(nombre_Archivo=nombre_Archivo, metodo_balanceo=self.nombre_balanceador, parametros_str=str(parametros), modelo_clasificacion="DecisionTreeClassifier")
+        os.makedirs("modelos_LR", exist_ok=True)
+        for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
+            self.guardar_modelo("modelos_LR", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
+
+    def MLP(self, nombre_Archivo, parametros = None):
+        if not parametros:
+            parametros = {
+            }
+
+        X_train_EI = np.array(self.balanceador.train_EI["Embedding"].tolist())
+        y_train_EI = self.balanceador.train_EI["MBTI"].tolist()
+
+        X_train_SN = np.array(self.balanceador.train_SN["Embedding"].tolist())
+        y_train_SN = self.balanceador.train_SN["MBTI"].tolist()
+        
+        X_train_TF = np.array(self.balanceador.train_TF["Embedding"].tolist())
+        y_train_TF = self.balanceador.train_TF["MBTI"].tolist()
+        
+        X_train_JP = np.array(self.balanceador.train_JP["Embedding"].tolist())
+        y_train_JP = self.balanceador.train_JP["MBTI"].tolist()
+        '''
+        hiperparametros = {
+            "n_neighbors": [2,3,5],
+            "weights": [ 'distance'],
+            "algorithm": ['ball_tree'],
+            "leaf_size": [5,10,15],
+        }
+
+        knc_EI = GridSearchCV(KNeighborsClassifier(), hiperparametros, scoring="f1_macro", cv=3, n_jobs=-1, verbose=3).fit(X_train_EI, y_train_EI)
+
+        hiperparametros_info = {
+            'E/I': knc_EI.best_params_
+        }
+
+        print(f"[INFO] Mejor combinación de hiperparámetros: {hiperparametros_info}")
+        nombre_archivo = "hiperparametros_KNC.txt"
+        with open(nombre_archivo, 'w') as f:
+            f.write(f"Hiperparámetros KNC - {self.nombre_modelo}\n")
+            f.write("="*50 + "\n\n")
+            for dimension, params in hiperparametros_info.items():
+                f.write(f"{dimension}: {params}\n")
+        
+        print(f"[INFO] Hiperparámetros guardados en {nombre_archivo}")
+        '''
+        mlp_EI = MLPClassifier().fit(X_train_EI, y_train_EI)
+        print("[INFO] Modelo E/I entrenado.")
+        mlp_SN = MLPClassifier().fit(X_train_SN, y_train_SN)
+        print("[INFO] Modelo S/N entrenado.")
+        mlp_TF = MLPClassifier().fit(X_train_TF, y_train_TF)
+        print("[INFO] Modelo T/F entrenado.")
+        mlp_JP = MLPClassifier().fit(X_train_JP, y_train_JP)
+        print("[INFO] Modelo J/P entrenado.")
+        
+        #Diccionario para almacenar los modelos entrenados
+        self.modelos = { 
+            'EI': mlp_EI,
+            'SN': mlp_SN,
+            'TF': mlp_TF,
+            'JP': mlp_JP
+        }
+
+        self.guardar_resultados(nombre_Archivo=nombre_Archivo, metodo_balanceo=self.nombre_balanceador, parametros_str=str(parametros), modelo_clasificacion="MLP")
+        os.makedirs("modelos_LR", exist_ok=True)
+        for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
+            self.guardar_modelo("modelos_LR", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
+
     def obtener_metricas(self, modelo, df_test, nombre_modelo):
         X_test = np.array(df_test["Embedding"].tolist(), dtype=np.float32)
         y_test = df_test["MBTI"].tolist()
@@ -644,12 +522,15 @@ class Pipeline:
             case "LinearSVM":
                 print(f"[EJECUCION] Entrenando modelo LinearSVM con {self.nombre_balanceador} ...")
                 self.LinearSVM(nombre_Archivo=nombre_Archivo, parametros=parametros)
+            case "KNC":
+                print(f"[EJECUCION] Entrenando modelo KNeighborsClassifier con {self.nombre_balanceador}...")
+                self.KNC(nombre_Archivo=nombre_Archivo, parametros=parametros)
+            case "DTC":
+                print(f"[EJECUCION] Entrenando modelo DecisionTreeClassifier con {self.nombre_balanceador}...")
+                self.DTC(nombre_Archivo=nombre_Archivo, parametros=parametros)
             case "MLP":
-                print(f"[EJECUCION] Entrenando modelo MLP con {self.nombre_balanceador} ...")
-                self.MLP_Propio(nombre_Archivo=nombre_Archivo, parametros=parametros)
-            case "MLP_Large":
-                print(f"[EJECUCION] Entrenando modelo MLP con {self.nombre_balanceador} ...")
-                self.MLP_PropioLarge(nombre_Archivo=nombre_Archivo, parametros=parametros)
+                print(f"[EJECUCION] Entrenando modelo MultiLayerPerceptron con {self.nombre_balanceador}...")
+                self.MLP(nombre_Archivo=nombre_Archivo, parametros=parametros)
             case _ : 
                 print("[ERROR] Modelo de clasificación no reconocido")
 
@@ -659,24 +540,32 @@ class Pipeline:
 def pipeline_modelo_entreno(modelo:str):
     nombre_dataset = f"{modelo.replace('/', '_')}_dataset.parquet"
     balSMOTE = BalanceadorSMOTE(nombre_dataset=nombre_dataset)
-    balBORSMOTE = BalanceadorBorderlineSMOTE(nombre_dataset=nombre_dataset)
-    balADASYN = BalanceadorADASYN(nombre_dataset=nombre_dataset)
-
+    #balBORSMOTE = BalanceadorBorderlineSMOTE(nombre_dataset=nombre_dataset)
+    #balADASYN = BalanceadorADASYN(nombre_dataset=nombre_dataset)
+    #balENN = BalanceadorENN(nombre_dataset=nombre_dataset)
+    #balAKNN = BalanceadorAKNN(nombre_dataset=nombre_dataset)
+    
     pipelineSMOTE = Pipeline(nombre_modelo=modelo, balanceador=balSMOTE)
-    pipelineBORSMOTE = Pipeline(nombre_modelo=modelo, balanceador=balBORSMOTE)
-    pipelineADASYN = Pipeline(nombre_modelo=modelo, balanceador=balADASYN)
+    #pipelineBORSMOTE = Pipeline(nombre_modelo=modelo, balanceador=balBORSMOTE)
+    #pipelineADASYN = Pipeline(nombre_modelo=modelo, balanceador=balADASYN)
+    #pipelineENN = Pipeline(nombre_modelo=modelo, balanceador=balENN)
+    #pipelineAKNN = Pipeline(nombre_modelo=modelo, balanceador=balAKNN)
 
-    #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN], preprocesar=False, algoritmo="RL", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    #ejecutar_pipelines([pipelineAKNN], preprocesar=False, algoritmo="RL", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
     #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN], preprocesar=False, algoritmo="XGBoost", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
     #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN], preprocesar=False, algoritmo="LinearSVM", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
-    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN], preprocesar=False, algoritmo="MLP_Large", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN], preprocesar=False, algoritmo="MLP", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    #ejecutar_pipelines([pipelineSMOTE], preprocesar=False, algoritmo="KNC", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    #ejecutar_pipelines([pipelineSMOTE], preprocesar=False, algoritmo="DTC", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    ejecutar_pipelines([pipelineSMOTE], preprocesar=False, algoritmo="MLP", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    
 
 def ejecutar_pipelines(pipelines:list, preprocesar=False, algoritmo=None, nombre_Archivo="Resultados.xlsx"):
     for pipeline in pipelines:
         pipeline.ejecutar_pipeline_entreno(preprocesar=preprocesar, algotitmo=algoritmo, nombre_Archivo=nombre_Archivo)
 
 if __name__ == "__main__":
-    '''
+   
     #EJECUCION PIPELINE ROBERTA BASE
     print("="*50)
     print("[INICIO] Ejecución pipeline con Roberta Base ...")
@@ -684,7 +573,7 @@ if __name__ == "__main__":
     pipeline_modelo_entreno(nombre_modelo)
     print("[FIN] Ejecución pipeline con Roberta Base ...")
     print("="*50)
-    
+    '''
     #EJECUCION PIPELINE XLM-ROBERTA-BASE
     print("="*50)
     print("[INICIO] Ejecución pipeline con XLM Roberta Base ...")
@@ -693,7 +582,6 @@ if __name__ == "__main__":
     print("[FIN] Ejecución pipeline con XLM Roberta Base ...")
     print("="*50)
 
-    '''
     #EJECUCION PIPELINE XLM-ROBERTA-LARGE
     print("="*50)
     print("[INICIO] Ejecución pipeline con XLM Roberta Large ...")
@@ -701,4 +589,5 @@ if __name__ == "__main__":
     pipeline_modelo_entreno(nombre_modelo)
     print("[FIN] Ejecución pipeline con XLM Roberta Large ...")
     print("="*50)
+    '''
     
