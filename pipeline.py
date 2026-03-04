@@ -1,23 +1,21 @@
 import os
 import pandas as pd
 import numpy as np
+import joblib
+from openpyxl import load_workbook
+import optuna
+
 from balanceador import *
 from procesador import Preprocesador
-from sklearn.model_selection import GridSearchCV
+
+from sklearn.model_selection import cross_val_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import LinearSVC
 from sklearn.metrics import classification_report, confusion_matrix, precision_recall_fscore_support, accuracy_score
-from sklearn.ensemble import RandomForestClassifier 
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
-import joblib
-from openpyxl import load_workbook
 from xgboost import XGBClassifier
-from torch import nn
-from skorch import NeuralNetClassifier
-from skorch.callbacks import EarlyStopping
-from torch.optim import Adam
 
 class Pipeline:
     def __init__(self, nombre_modelo, balanceador:Balanceador=None):
@@ -377,8 +375,7 @@ class Pipeline:
 
     def MLP(self, nombre_Archivo, parametros = None):
         if not parametros:
-            parametros = {
-            }
+            parametros = {'hidden_layer_sizes': (256, 128, 64), 'activation': 'tanh', 'solver': 'adam', 'learning_rate': 'constant', 'learning_rate_init': 0.001}
 
         X_train_EI = np.array(self.balanceador.train_EI["Embedding"].tolist())
         y_train_EI = self.balanceador.train_EI["MBTI"].tolist()
@@ -391,37 +388,62 @@ class Pipeline:
         
         X_train_JP = np.array(self.balanceador.train_JP["Embedding"].tolist())
         y_train_JP = self.balanceador.train_JP["MBTI"].tolist()
+        
         '''
-        hiperparametros = {
-            "n_neighbors": [2,3,5],
-            "weights": [ 'distance'],
-            "algorithm": ['ball_tree'],
-            "leaf_size": [5,10,15],
-        }
+        # Funcion objetivo para optuna
+        def objective(trial):
+            # Optuna elige combinaciones inteligentemente en cada "intento"
+            hidden_layer_sizes = trial.suggest_categorical("hidden_layer_sizes", [(256,256,128), (128,128,64), (256,128,64)])
+            activation = trial.suggest_categorical("activation", ['logistic', 'tanh', 'relu'])
+            solver = trial.suggest_categorical("solver", ['sgd', 'adam'])
+            learning_rate = trial.suggest_categorical("learning_rate", ['constant', 'invscaling'])
+            learning_rate_init = trial.suggest_categorical("learning_rate_init", [0.001, 0.0005])
 
-        knc_EI = GridSearchCV(KNeighborsClassifier(), hiperparametros, scoring="f1_macro", cv=3, n_jobs=-1, verbose=3).fit(X_train_EI, y_train_EI)
+            # Parche de seguridad: 'lbfgs' crashea si le pones early_stopping=True
+            usa_early_stopping = True if solver in ['sgd', 'adam'] else False
+
+            # Instanciamos el modelo con los parámetros sugeridos por Optuna
+            modelo = MLPClassifier(
+                hidden_layer_sizes=hidden_layer_sizes,
+                activation=activation,
+                solver=solver,
+                learning_rate=learning_rate,
+                learning_rate_init=learning_rate_init,
+                early_stopping=usa_early_stopping,
+                max_iter=6000,
+                random_state=42
+            )
+
+            score = cross_val_score(modelo, X_train_EI, y_train_EI, cv=3, scoring="f1_macro", n_jobs=-1) #Usamos los datasets de entrenos de EI ya que es el que mas desbalanceado está
+            return score.mean()
+
+        print("[EJECUCION] Iniciando Estudio Optuna para MLP...")
+        estudio = optuna.create_study(direction="maximize")
+        
+        estudio.optimize(objective, n_trials=20, gc_after_trial=True, n_jobs=-1)
 
         hiperparametros_info = {
-            'E/I': knc_EI.best_params_
+            'E/I': estudio.best_params
         }
 
         print(f"[INFO] Mejor combinación de hiperparámetros: {hiperparametros_info}")
-        nombre_archivo = "hiperparametros_KNC.txt"
+        nombre_archivo = "hiperparametros_MLP.txt"
         with open(nombre_archivo, 'w') as f:
-            f.write(f"Hiperparámetros KNC - {self.nombre_modelo}\n")
+            f.write(f"Hiperparámetros MLP - {self.nombre_modelo}\n")
             f.write("="*50 + "\n\n")
             for dimension, params in hiperparametros_info.items():
                 f.write(f"{dimension}: {params}\n")
         
         print(f"[INFO] Hiperparámetros guardados en {nombre_archivo}")
         '''
-        mlp_EI = MLPClassifier().fit(X_train_EI, y_train_EI)
+        
+        mlp_EI = MLPClassifier(hidden_layer_sizes=parametros["hidden_layer_sizes"], activation=parametros["activation"], solver=parametros["solver"], learning_rate=parametros["learning_rate"], learning_rate_init=parametros["learning_rate_init"], max_iter=6000, random_state=42).fit(X_train_EI, y_train_EI)
         print("[INFO] Modelo E/I entrenado.")
-        mlp_SN = MLPClassifier().fit(X_train_SN, y_train_SN)
+        mlp_SN = MLPClassifier(hidden_layer_sizes=parametros["hidden_layer_sizes"], activation=parametros["activation"], solver=parametros["solver"], learning_rate=parametros["learning_rate"], learning_rate_init=parametros["learning_rate_init"], max_iter=6000, random_state=42).fit(X_train_SN, y_train_SN)
         print("[INFO] Modelo S/N entrenado.")
-        mlp_TF = MLPClassifier().fit(X_train_TF, y_train_TF)
+        mlp_TF = MLPClassifier(hidden_layer_sizes=parametros["hidden_layer_sizes"], activation=parametros["activation"], solver=parametros["solver"], learning_rate=parametros["learning_rate"], learning_rate_init=parametros["learning_rate_init"], max_iter=6000, random_state=42).fit(X_train_TF, y_train_TF)
         print("[INFO] Modelo T/F entrenado.")
-        mlp_JP = MLPClassifier().fit(X_train_JP, y_train_JP)
+        mlp_JP = MLPClassifier(hidden_layer_sizes=parametros["hidden_layer_sizes"], activation=parametros["activation"], solver=parametros["solver"], learning_rate=parametros["learning_rate"], learning_rate_init=parametros["learning_rate_init"], max_iter=6000, random_state=42).fit(X_train_JP, y_train_JP)
         print("[INFO] Modelo J/P entrenado.")
         
         #Diccionario para almacenar los modelos entrenados
@@ -436,7 +458,7 @@ class Pipeline:
         os.makedirs("modelos_LR", exist_ok=True)
         for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
             self.guardar_modelo("modelos_LR", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
-
+        
     def obtener_metricas(self, modelo, df_test, nombre_modelo):
         X_test = np.array(df_test["Embedding"].tolist(), dtype=np.float32)
         y_test = df_test["MBTI"].tolist()
