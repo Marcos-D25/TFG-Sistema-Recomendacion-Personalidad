@@ -7,11 +7,14 @@ import torch
 
 #Esta clase se encarga de limpiar, tokenizar y realizar el embedding del dataset a partir de un modelo pre-entrenado
 class Preprocesador:
-    def __init__(self, nomArchivo, nombre_modelo, max_length=512, dispotivo='cuda', columna="posts"):
-        print(f"[INFO] Cargando dataset desde: {nomArchivo}")
-        self.dataset = pd.read_csv(nomArchivo)
+    def __init__(self, nomCarpeta, nombre_modelo, max_length=512, dispotivo='cuda', columna="posts"):
+        
+        print(f"[INFO] Cargando dataset desde: {nomCarpeta}")
+        self.nomCarpeta = nomCarpeta
+        self.dataset = pd.read_csv(os.path.join(nomCarpeta, "MBTI.csv"))
         self.nombre_modelo = nombre_modelo
         self.columna = columna
+
         print(f"[INFO] Cargando tokenizador: {nombre_modelo}")
         self.tokenizer = AutoTokenizer.from_pretrained(nombre_modelo)
         self.max_length = max_length
@@ -103,6 +106,7 @@ class Preprocesador:
         print("[INFO] Consolidando resultados...")
         self.reformular_clases() #Generamos las clases binarias para cada dimensión del MBTI
         df_final = pd.DataFrame({
+            "Posts": self.dataset[self.columna].tolist(),
             "Embedding": [emb.tolist() for emb in embeddings_finales],
             "MBTI": self.dataset["type"].tolist(),
             "E/I": self.dataset["E/I"].tolist(),
@@ -110,13 +114,12 @@ class Preprocesador:
             "T/F": self.dataset["T/F"].tolist(),
             "J/P": self.dataset["J/P"].tolist()
         })
+        self.guardar_dataset(df_final)
 
-        # Paso 4: Guardado en Parquet
-        os.makedirs("datasets", exist_ok=True)
+    def guardar_dataset(self, dataset):
         modelo_limpio = self.nombre_modelo.replace("/", "_")
-        ruta_archivo = os.path.join("datasets", f"{modelo_limpio}_dataset.parquet")
-        
-        df_final.to_parquet(ruta_archivo, engine="pyarrow")
+        ruta_archivo = os.path.join(self.nomCarpeta, f"{modelo_limpio}_dataset.parquet")
+        dataset.to_parquet(ruta_archivo, engine="pyarrow")
         print(f"[EXITO] Dataset guardado en: {ruta_archivo}")
 
 
@@ -130,10 +133,11 @@ def ejecutar_preprocesador(preprocesador:Preprocesador):
 
 
 def main():
-    '''
+    
     print("[EJECUCION] Ejecutando ROBERTA BASE...]")
-    robertaBase = Preprocesador(os.path.join("datasets","MBTI_sinProcesar.csv"),"FacebookAI/roberta-base")
-    ejecutar_preprocesador(robertaBase)
+    robertaBase = Preprocesador("dataset9K","FacebookAI/roberta-base")
+    robertaBase.reformular_clases()
+    robertaBase.guardar_dataset(robertaBase.dataset)
     print("[EJECUCION] ROBERTA BASE guardado]\n\n")
     '''
     print("[EJECUCION] Ejecutando XML ROBERTA BASE...]")
@@ -145,6 +149,6 @@ def main():
     xml_robertaLarge = Preprocesador(os.path.join("datasets","MBTI_sinProcesar.csv"),"FacebookAI/xlm-roberta-large")
     ejecutar_preprocesador(xml_robertaLarge)
     print("[EJECUCION] XML ROBERTA LARGE guardado]\n\n")
-    
+    '''
 if __name__ == "__main__":
     main()

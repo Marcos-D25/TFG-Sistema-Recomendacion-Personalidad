@@ -9,13 +9,13 @@ from abc import ABC, abstractmethod
 
 class Balanceador(ABC):
 
-    def __init__(self, nombre_dataset:str):
+    def __init__(self,nomCarpeta:str = "dataset9K", nombre_dataset:str = None):
         '''
         Inicializador de clase.
         
         :param nombre_dataset: Nombre del archivo del dataset, se espera que esté en la carpeta local "datasets"
         '''
-        self.dataset = pd.read_parquet(os.path.join("datasets", nombre_dataset))
+        self.dataset = pd.read_parquet(os.path.join(nomCarpeta, nombre_dataset))
 
     def balancear(self, dataset:pd.DataFrame, columnas:dict={"c1":"Embedding", "c2": "MBTI"}) -> pd.DataFrame:
         '''
@@ -111,40 +111,40 @@ class Balanceador(ABC):
         pass
 
 class BalanceadorSMOTE(Balanceador):
-    def __init__(self, nombre_dataset:str):
-        super().__init__(nombre_dataset)
+    def __init__(self,nomCarpeta:str = "dataset9K", nombre_dataset:str = None):
+        super().__init__(nomCarpeta,nombre_dataset)
         self.balanceador = SMOTE(random_state=42)
 
     def __str__(self):
         return "SMOTE"
 
 class BalanceadorBorderlineSMOTE(Balanceador):
-    def __init__(self, nombre_dataset:str):
-        super().__init__(nombre_dataset)
+    def __init__(self,nomCarpeta:str = "dataset9K", nombre_dataset:str = None):
+        super().__init__(nomCarpeta,nombre_dataset)
         self.balanceador = BorderlineSMOTE(random_state=42)
 
     def __str__(self):
         return "BorderlineSMOTE"
 
 class BalanceadorADASYN(Balanceador):
-    def __init__(self, nombre_dataset:str):
-        super().__init__(nombre_dataset)
+    def __init__(self,nomCarpeta:str = "dataset9K", nombre_dataset:str = None):
+        super().__init__(nomCarpeta,nombre_dataset)
         self.balanceador = ADASYN(random_state=42)
     
     def __str__(self):
         return "ADASYN"
 
 class BalanceadorENN(Balanceador):
-    def __init__(self, nombre_dataset:str):
-        super().__init__(nombre_dataset)
+    def __init__(self,nomCarpeta:str = "dataset9K", nombre_dataset:str = None):
+        super().__init__(nomCarpeta,nombre_dataset)
         self.balanceador = EditedNearestNeighbours()
     
     def __str__(self):
         return "EditedNearestNeighbours"
 
 class BalanceadorAKNN(Balanceador):
-    def __init__(self, nombre_dataset:str):
-        super().__init__(nombre_dataset)
+    def __init__(self,nomCarpeta:str = "dataset9K", nombre_dataset:str = None):
+        super().__init__(nomCarpeta,nombre_dataset)
         self.balanceador = AllKNN()
     
     def __str__(self):

@@ -3,7 +3,7 @@ __pycache__/
 *.py[codz]
 *$py.class
 
-datasets/
+dataset*/
 hiperparametros_*.txt
 resultados/
 .vscode/

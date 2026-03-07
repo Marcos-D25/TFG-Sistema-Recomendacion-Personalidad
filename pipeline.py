@@ -25,29 +25,33 @@ class Pipeline:
 
     def xgboost(self, nombre_Archivo, parametros = None):
         if not parametros: # En el caso de que no pasen parametros, se usan unos por defecto
-            parametros = {'learning_rate': 0.05, 'max_depth': 7, 'n_estimators': 2000, 'subsample': 0.6, 'eval_metric': 'aucpr', 'early_stopping_rounds': 15}
+            parametros = {'n_estimators': 352, 'max_depth': 8, 'learning_rate': 0.041694500859353036, 'subsample': 0.6688508428769014, 'colsample_bytree': 0.6246885857257476, 'gamma': 0.6844100651211652, 'tree_method': 'hist',  
+                'device': 'cuda',       
+                'random_state': 42,
+                'n_jobs': 1
+                }
                         
-        X_train_EI = np.array(self.balanceador.train_bal_EI["Embedding"].tolist())
-        y_train_EI = self.balanceador.train_bal_EI["MBTI"].tolist()
+        X_train_EI = np.array(self.balanceador.train_EI["Embedding"].tolist())
+        y_train_EI = self.balanceador.train_EI["MBTI"].tolist()
         X_val_EI = np.array(self.balanceador.val_EI["Embedding"].tolist())
         y_val_EI = self.balanceador.val_EI["MBTI"].tolist()
 
-        X_train_SN = np.array(self.balanceador.train_bal_SN["Embedding"].tolist())
-        y_train_SN = self.balanceador.train_bal_SN["MBTI"].tolist()
+        X_train_SN = np.array(self.balanceador.train_SN["Embedding"].tolist())
+        y_train_SN = self.balanceador.train_SN["MBTI"].tolist()
         X_val_SN = np.array(self.balanceador.val_SN["Embedding"].tolist())
         y_val_SN = self.balanceador.val_SN["MBTI"].tolist()
         
-        X_train_TF = np.array(self.balanceador.train_bal_TF["Embedding"].tolist())
-        y_train_TF = self.balanceador.train_bal_TF["MBTI"].tolist()
+        X_train_TF = np.array(self.balanceador.train_TF["Embedding"].tolist())
+        y_train_TF = self.balanceador.train_TF["MBTI"].tolist()
         X_val_TF = np.array(self.balanceador.val_TF["Embedding"].tolist())
         y_val_TF = self.balanceador.val_TF["MBTI"].tolist()
         
-        X_train_JP = np.array(self.balanceador.train_bal_JP["Embedding"].tolist())
-        y_train_JP = self.balanceador.train_bal_JP["MBTI"].tolist()
+        X_train_JP = np.array(self.balanceador.train_JP["Embedding"].tolist())
+        y_train_JP = self.balanceador.train_JP["MBTI"].tolist()
         X_val_JP = np.array(self.balanceador.val_JP["Embedding"].tolist())
         y_val_JP = self.balanceador.val_JP["MBTI"].tolist()
         
-        
+        ''' 
         def objective(trial):
             hiperparametros = {
                 'n_estimators': trial.suggest_int('n_estimators', 100, 800),#Eligira un numero entre 100 y 800
@@ -67,13 +71,13 @@ class Pipeline:
             # Instanciamos el modelo con los parámetros sugeridos por Optuna
             modelo = XGBClassifier(**hiperparametros)
 
-            score = cross_val_score(modelo, X_train_EI, y_train_EI, cv=3, scoring="f1_macro", n_jobs=-1)
+            score = cross_val_score(modelo, X_train_EI, y_train_EI, cv=3, scoring="f1_macro", n_jobs=1)
             return score.mean()
 
         print("[EJECUCION] Iniciando Estudio Optuna para XGBoost...")
         estudio = optuna.create_study(direction="maximize")
         
-        estudio.optimize(objective, n_trials=20, gc_after_trial=True, n_jobs=-1)
+        estudio.optimize(objective, n_trials=20, gc_after_trial=True, n_jobs=1)
 
         hiperparametros_info = {
             'E/I': estudio.best_params
@@ -91,16 +95,16 @@ class Pipeline:
 
         '''
         
-        xgb_EI = XGBClassifier(learning_rate=parametros['learning_rate'], max_depth=parametros['max_depth'], n_estimators=parametros['n_estimators'], subsample=parametros['subsample'], device = "cuda", tree_method="hist",random_state=42, eval_metric=parametros['eval_metric'], early_stopping_rounds=parametros['early_stopping_rounds'], verbosity=0)
+        xgb_EI = XGBClassifier(**parametros)
         xgb_EI.fit(X_train_EI, y_train_EI, eval_set=[(X_val_EI, y_val_EI)])
         print("[INFO] Modelo E/I entrenado.")
-        xgb_SN = XGBClassifier(learning_rate=parametros['learning_rate'], max_depth=parametros['max_depth'], n_estimators=parametros['n_estimators'], subsample=parametros['subsample'], device = "cuda", tree_method="hist",random_state=42, eval_metric=parametros['eval_metric'], early_stopping_rounds=parametros['early_stopping_rounds'], verbosity=0)
+        xgb_SN = XGBClassifier(**parametros)
         xgb_SN.fit(X_train_SN, y_train_SN, eval_set=[(X_val_SN, y_val_SN)])
         print("[INFO] Modelo S/N entrenado.")
-        xgb_TF = XGBClassifier(learning_rate=parametros['learning_rate'], max_depth=parametros['max_depth'], n_estimators=parametros['n_estimators'], subsample=parametros['subsample'], device = "cuda", tree_method="hist",random_state=42, eval_metric=parametros['eval_metric'], early_stopping_rounds=parametros['early_stopping_rounds'], verbosity=0)
+        xgb_TF = XGBClassifier(**parametros)
         xgb_TF.fit(X_train_TF, y_train_TF, eval_set=[(X_val_TF, y_val_TF)])
         print("[INFO] Modelo T/F entrenado.")
-        xgb_JP = XGBClassifier(learning_rate=parametros['learning_rate'], max_depth=parametros['max_depth'], n_estimators=parametros['n_estimators'], subsample=parametros['subsample'], device = "cuda", tree_method="hist",random_state=42, eval_metric=parametros['eval_metric'], early_stopping_rounds=parametros['early_stopping_rounds'], verbosity=0)
+        xgb_JP = XGBClassifier(**parametros)
         xgb_JP.fit(X_train_JP, y_train_JP, eval_set=[(X_val_JP, y_val_JP)])
         print("[INFO] Modelo J/P entrenado.")
 
@@ -116,22 +120,29 @@ class Pipeline:
         os.makedirs("modelos_XGB", exist_ok=True)
         for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
             self.guardar_modelo("modelos_XGB", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
-        '''       
+              
       
-    def LinearSVM(self, nombre_Archivo, parametros = None):
+    def LinearSVC(self, nombre_Archivo, parametros = None):
         if not parametros: # En el caso de que no pasen parametros, se usan unos por defecto
-            parametros = {'C': 10, 'class_weight': None, 'loss': 'squared_hinge', 'penalty': 'l2', 'max_iter':10000}
+            parametros = {'loss': 'squared_hinge', 'C': 9.605448156429867, 'tol': 0.0004119653918147926, 'fit_intercept': False,
+                          'random_state': 42,
+                          'class_weight':'balanced',
+                          'max_iter': 5000
+                          }
 
-        X_train_EI = np.array(self.balanceador.train_bal_EI["Embedding"].tolist())
-        y_train_EI = self.balanceador.train_bal_EI["MBTI"].tolist()
-        X_train_SN = np.array(self.balanceador.train_bal_SN["Embedding"].tolist())
-        y_train_SN = self.balanceador.train_bal_SN["MBTI"].tolist()
-        X_train_TF = np.array(self.balanceador.train_bal_TF["Embedding"].tolist())
-        y_train_TF = self.balanceador.train_bal_TF["MBTI"].tolist()
-        X_train_JP = np.array(self.balanceador.train_bal_JP["Embedding"].tolist())
-        y_train_JP = self.balanceador.train_bal_JP["MBTI"].tolist()
+        X_train_EI = np.array(self.balanceador.train_EI["Embedding"].tolist())
+        y_train_EI = self.balanceador.train_EI["MBTI"].tolist()
+
+        X_train_SN = np.array(self.balanceador.train_SN["Embedding"].tolist())
+        y_train_SN = self.balanceador.train_SN["MBTI"].tolist()
         
+        X_train_TF = np.array(self.balanceador.train_TF["Embedding"].tolist())
+        y_train_TF = self.balanceador.train_TF["MBTI"].tolist()
         
+        X_train_JP = np.array(self.balanceador.train_JP["Embedding"].tolist())
+        y_train_JP = self.balanceador.train_JP["MBTI"].tolist()
+        
+        '''
         def objective(trial):
             hiperparametros = {
                 'penalty': "l2",
@@ -141,10 +152,8 @@ class Pipeline:
                 'fit_intercept' : trial.suggest_categorical("fit_intercept", [True, False]),
                 
                 'random_state': 42,
-                'n_jobs': -1,
-                'class_weight': trial.suggest_categorical("class_weight", [None, 'balanced']),
+                'class_weight':'balanced',
                 'max_iter': 5000,
-                'dual': False
             }
 
             # Instanciamos el modelo con los parámetros sugeridos por Optuna
@@ -174,13 +183,13 @@ class Pipeline:
         
         '''
 
-        lSVM_EI = LinearSVC(C=parametros['C'], loss=parametros['loss'], max_iter=parametros['max_iter'], penalty=parametros['penalty'],class_weight=parametros["class_weight"], random_state=42, dual=False).fit(X_train_EI, y_train_EI)
+        lSVM_EI = LinearSVC(**parametros).fit(X_train_EI, y_train_EI)
         print("[INFO] Modelo E/I entrenado.")
-        lSVM_SN = LinearSVC(C=parametros['C'], loss=parametros['loss'], max_iter=parametros['max_iter'], penalty=parametros['penalty'],class_weight=parametros["class_weight"], random_state=42,  dual=False).fit(X_train_SN, y_train_SN)
+        lSVM_SN = LinearSVC(**parametros).fit(X_train_SN, y_train_SN)
         print("[INFO] Modelo S/N entrenado.")
-        lSVM_TF = LinearSVC(C=parametros['C'], loss=parametros['loss'], max_iter=parametros['max_iter'], penalty=parametros['penalty'],class_weight=parametros["class_weight"], random_state=42,  dual=False).fit(X_train_TF, y_train_TF)
+        lSVM_TF = LinearSVC(**parametros).fit(X_train_TF, y_train_TF)
         print("[INFO] Modelo T/F entrenado.")
-        lSVM_JP = LinearSVC(C=parametros['C'], loss=parametros['loss'], max_iter=parametros['max_iter'], penalty=parametros['penalty'],class_weight=parametros["class_weight"], random_state=42,  dual=False).fit(X_train_JP, y_train_JP)
+        lSVM_JP = LinearSVC(**parametros).fit(X_train_JP, y_train_JP)
         print("[INFO] Modelo J/P entrenado.")
 
         self.modelos = { 
@@ -195,12 +204,15 @@ class Pipeline:
         os.makedirs("modelos_LinearSVM", exist_ok=True)
         for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
             self.guardar_modelo("modelos_LinearSVM", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
-        '''
+        
 
     def RL(self, nombre_Archivo, parametros = None):
 
         if not parametros: # En el caso de que no pasen parametros, se usan unos por defecto
-            parametros={'C': 10, 'class_weight': None, 'penalty': 'l2', 'solver': 'lbfgs'}
+            parametros={'penalty': None, 'C': 9.732719859279047, 'solver': 'lbfgs', 'tol': 0.00010564097578389837, 'class_weight': 'balanced',
+                        'random_state': 42,
+                        'n_jobs': -1,
+                        'max_iter': 5000}
 
         X_train_EI = np.array(self.balanceador.train_EI["Embedding"].tolist())
         y_train_EI = self.balanceador.train_EI["MBTI"].tolist()
@@ -214,7 +226,7 @@ class Pipeline:
         X_train_JP = np.array(self.balanceador.train_JP["Embedding"].tolist())
         y_train_JP = self.balanceador.train_JP["MBTI"].tolist()
         
-        
+        '''
         def objective(trial):
             hiperparametros = {
                 'penalty': trial.suggest_categorical("penalty",["l1","l2",None]),
@@ -254,16 +266,15 @@ class Pipeline:
 
         '''
         
-        lr_EI = LogisticRegression(C=parametros["C"], penalty=parametros["penalty"], solver=parametros["solver"], class_weight=parametros["class_weight"], max_iter=5000, random_state=42, verbose=0).fit(X_train_EI, y_train_EI)
+        lr_EI = LogisticRegression(**parametros).fit(X_train_EI, y_train_EI)
         print("[INFO] Modelo E/I entrenado.")
-        lr_SN = LogisticRegression(C=parametros["C"], penalty=parametros["penalty"], solver=parametros["solver"], class_weight=parametros["class_weight"], max_iter=5000, random_state=42, verbose=0).fit(X_train_SN, y_train_SN)
+        lr_SN = LogisticRegression(**parametros).fit(X_train_SN, y_train_SN)
         print("[INFO] Modelo S/N entrenado.")
-        lr_TF = LogisticRegression(C=parametros["C"], penalty=parametros["penalty"], solver=parametros["solver"], class_weight=parametros["class_weight"], max_iter=5000, random_state=42, verbose=0).fit(X_train_TF, y_train_TF)
+        lr_TF = LogisticRegression(**parametros).fit(X_train_TF, y_train_TF)
         print("[INFO] Modelo T/F entrenado.")
-        lr_JP = LogisticRegression(C=parametros["C"], penalty=parametros["penalty"], solver=parametros["solver"], class_weight=parametros["class_weight"], max_iter=5000, random_state=42, verbose=0).fit(X_train_JP, y_train_JP)
+        lr_JP = LogisticRegression(**parametros).fit(X_train_JP, y_train_JP)
         print("[INFO] Modelo J/P entrenado.")
         
-        #Diccionario para almacenar los modelos entrenados
         self.modelos = { 
             'EI': lr_EI,
             'SN': lr_SN,
@@ -275,16 +286,12 @@ class Pipeline:
         os.makedirs("modelos_LR", exist_ok=True)
         for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
             self.guardar_modelo("modelos_LR", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
-        '''
+        
             
     def KNC(self, nombre_Archivo, parametros = None):
         if not parametros:
-            parametros = {
-                "n_neighbors": 3,
-                "weights": 'distance',
-                "algorithm": 'ball_tree',
-                "leaf_size": 10
-            }
+            parametros = {'n_neighbors': 2, 'weights': 'distance', 'algorithm': 'brute', 'leaf_size': 14, 'metric': 'cosine',
+                          'n_jobs': -1 }
 
         X_train_EI = np.array(self.balanceador.train_EI["Embedding"].tolist())
         y_train_EI = self.balanceador.train_EI["MBTI"].tolist()
@@ -298,6 +305,7 @@ class Pipeline:
         X_train_JP = np.array(self.balanceador.train_JP["Embedding"].tolist())
         y_train_JP = self.balanceador.train_JP["MBTI"].tolist()
         
+        '''
         def objective(trial):
             hiperparametros = {
                 'n_neighbors': trial.suggest_int("n_neighbors", 1, 15),
@@ -333,16 +341,16 @@ class Pipeline:
 
 
         '''
-        knc_EI = KNeighborsClassifier(n_neighbors=parametros["n_neighbors"], weights=parametros["weights"], algorithm=parametros["algorithm"], leaf_size=parametros["leaf_size"], n_jobs=-1).fit(X_train_EI, y_train_EI)
+        
+        knc_EI = KNeighborsClassifier(**parametros).fit(X_train_EI, y_train_EI)
         print("[INFO] Modelo E/I entrenado.")
-        knc_SN = KNeighborsClassifier(n_neighbors=parametros["n_neighbors"], weights=parametros["weights"], algorithm=parametros["algorithm"], leaf_size=parametros["leaf_size"], n_jobs=-1).fit(X_train_SN, y_train_SN)
+        knc_SN = KNeighborsClassifier(**parametros).fit(X_train_SN, y_train_SN)
         print("[INFO] Modelo S/N entrenado.")
-        knc_TF = KNeighborsClassifier(n_neighbors=parametros["n_neighbors"], weights=parametros["weights"], algorithm=parametros["algorithm"], leaf_size=parametros["leaf_size"], n_jobs=-1).fit(X_train_TF, y_train_TF)
+        knc_TF = KNeighborsClassifier(**parametros).fit(X_train_TF, y_train_TF)
         print("[INFO] Modelo T/F entrenado.")
-        knc_JP = KNeighborsClassifier(n_neighbors=parametros["n_neighbors"], weights=parametros["weights"], algorithm=parametros["algorithm"], leaf_size=parametros["leaf_size"], n_jobs=-1).fit(X_train_JP, y_train_JP)
+        knc_JP = KNeighborsClassifier(**parametros).fit(X_train_JP, y_train_JP)
         print("[INFO] Modelo J/P entrenado.")
         
-        #Diccionario para almacenar los modelos entrenados
         self.modelos = { 
             'EI': knc_EI,
             'SN': knc_SN,
@@ -354,14 +362,12 @@ class Pipeline:
         os.makedirs("modelos_LR", exist_ok=True)
         for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
             self.guardar_modelo("modelos_LR", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
-        '''
+        
             
     def DTC(self, nombre_Archivo, parametros = None):
         if not parametros:
-            parametros = {
-                "criterion": ['gini', 'entropy', 'log_loss'],
-
-            }
+            parametros = {'criterion': 'gini', 'max_depth': 15, 'min_samples_split': 9, 'min_samples_leaf': 4, 'max_features': None, 'class_weight': None,
+                          'random_state': 42}
 
         X_train_EI = np.array(self.balanceador.train_EI["Embedding"].tolist())
         y_train_EI = self.balanceador.train_EI["MBTI"].tolist()
@@ -375,6 +381,7 @@ class Pipeline:
         X_train_JP = np.array(self.balanceador.train_JP["Embedding"].tolist())
         y_train_JP = self.balanceador.train_JP["MBTI"].tolist()
         
+        '''
         def objective(trial):
             hiperparametros = {
                 'criterion': trial.suggest_categorical("criterion", ["gini", "entropy"]),
@@ -414,16 +421,16 @@ class Pipeline:
         print(f"[INFO] Hiperparámetros guardados en {nombre_archivo}")
 
         '''
-        dtc_EI = DecisionTreeClassifier().fit(X_train_EI, y_train_EI)
+        
+        dtc_EI = DecisionTreeClassifier(**parametros).fit(X_train_EI, y_train_EI)
         print("[INFO] Modelo E/I entrenado.")
-        dtc_SN = DecisionTreeClassifier().fit(X_train_SN, y_train_SN)
+        dtc_SN = DecisionTreeClassifier(**parametros).fit(X_train_SN, y_train_SN)
         print("[INFO] Modelo S/N entrenado.")
-        dtc_TF = DecisionTreeClassifier().fit(X_train_TF, y_train_TF)
+        dtc_TF = DecisionTreeClassifier(**parametros).fit(X_train_TF, y_train_TF)
         print("[INFO] Modelo T/F entrenado.")
-        dtc_JP = DecisionTreeClassifier().fit(X_train_JP, y_train_JP)
+        dtc_JP = DecisionTreeClassifier(**parametros).fit(X_train_JP, y_train_JP)
         print("[INFO] Modelo J/P entrenado.")
         
-        #Diccionario para almacenar los modelos entrenados
         self.modelos = { 
             'EI': dtc_EI,
             'SN': dtc_SN,
@@ -435,11 +442,14 @@ class Pipeline:
         os.makedirs("modelos_LR", exist_ok=True)
         for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
             self.guardar_modelo("modelos_LR", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
-        '''
+        
         
     def MLP(self, nombre_Archivo, parametros = None):
         if not parametros:
-            parametros = {'hidden_layer_sizes': (256, 128, 64), 'activation': 'tanh', 'solver': 'adam', 'learning_rate': 'constant', 'learning_rate_init': 0.001}
+            parametros = {'hidden_layer_sizes': (256, 128, 64), 'activation': 'tanh', 'solver': 'adam', 'learning_rate': 'constant', 'learning_rate_init': 0.001,
+                          'early_stopping': True,
+                          'max_iter':6000,
+                          'random_state':42}
 
         X_train_EI = np.array(self.balanceador.train_EI["Embedding"].tolist())
         y_train_EI = self.balanceador.train_EI["MBTI"].tolist()
@@ -501,16 +511,15 @@ class Pipeline:
         print(f"[INFO] Hiperparámetros guardados en {nombre_archivo}")
         '''
         
-        mlp_EI = MLPClassifier(hidden_layer_sizes=parametros["hidden_layer_sizes"], activation=parametros["activation"], solver=parametros["solver"], learning_rate=parametros["learning_rate"], learning_rate_init=parametros["learning_rate_init"], max_iter=6000, random_state=42).fit(X_train_EI, y_train_EI)
+        mlp_EI = MLPClassifier(**parametros).fit(X_train_EI, y_train_EI)
         print("[INFO] Modelo E/I entrenado.")
-        mlp_SN = MLPClassifier(hidden_layer_sizes=parametros["hidden_layer_sizes"], activation=parametros["activation"], solver=parametros["solver"], learning_rate=parametros["learning_rate"], learning_rate_init=parametros["learning_rate_init"], max_iter=6000, random_state=42).fit(X_train_SN, y_train_SN)
+        mlp_SN = MLPClassifier(**parametros).fit(X_train_SN, y_train_SN)
         print("[INFO] Modelo S/N entrenado.")
-        mlp_TF = MLPClassifier(hidden_layer_sizes=parametros["hidden_layer_sizes"], activation=parametros["activation"], solver=parametros["solver"], learning_rate=parametros["learning_rate"], learning_rate_init=parametros["learning_rate_init"], max_iter=6000, random_state=42).fit(X_train_TF, y_train_TF)
+        mlp_TF = MLPClassifier(**parametros).fit(X_train_TF, y_train_TF)
         print("[INFO] Modelo T/F entrenado.")
-        mlp_JP = MLPClassifier(hidden_layer_sizes=parametros["hidden_layer_sizes"], activation=parametros["activation"], solver=parametros["solver"], learning_rate=parametros["learning_rate"], learning_rate_init=parametros["learning_rate_init"], max_iter=6000, random_state=42).fit(X_train_JP, y_train_JP)
+        mlp_JP = MLPClassifier(**parametros).fit(X_train_JP, y_train_JP)
         print("[INFO] Modelo J/P entrenado.")
         
-        #Diccionario para almacenar los modelos entrenados
         self.modelos = { 
             'EI': mlp_EI,
             'SN': mlp_SN,
@@ -583,21 +592,12 @@ class Pipeline:
         joblib.dump(modelo, os.path.join(carpeta, nombre_archivo))
 
     #Pipeline que sirve para comprobar la mejor combinacion de hiperparametros para un modelo de clasificacion concreto
-    def ejecutar_pipeline_entreno(self, preprocesar=True, parametros=None, algotitmo=None, nombre_Archivo="ResultadosRegresion.xlsx"):
+    def ejecutar_pipeline_entreno(self,nomCarpeta="dataset9K", preprocesar=True, parametros=None, algotitmo=None, nombre_Archivo="resultados.xlsx"):
         print("[EJECUCION] Ejecutando pipeline completo ...")
-
-        #Paso 1: Preprocesamiento del dataset (opcional, se puede saltar si ya se ha preprocesado antes y se tiene el parquet guardado)
-
-        if preprocesar:
-            archivo = os.path.join("datasets","MBTI_sinProcesar.csv")
-            procesador = Preprocesador(archivo, self.nombre_modelo)
-            procesador.procesar_dataset()
-
+        
         print("[EJECUCION] Dividiendo y balanceando dataset ...")
-        #Paso 2: División y balanceo del dataset
         self.balanceador.dividir_balancear()
 
-        #Paso 3: Dependiendo del modelo, entrenamiento y evaluación y exportación de resultados
         match algotitmo:
             case "RL": 
                 print(f"[EJECUCION] Entrenando modelo de Regresión Logística con {self.nombre_balanceador} ...")
@@ -605,9 +605,9 @@ class Pipeline:
             case "XGBoost":
                 print(f"[EJECUCION] Entrenando modelo XGBoost con {self.nombre_balanceador} ...")
                 self.xgboost(nombre_Archivo=nombre_Archivo, parametros=parametros)
-            case "LinearSVM":
-                print(f"[EJECUCION] Entrenando modelo LinearSVM con {self.nombre_balanceador} ...")
-                self.LinearSVM(nombre_Archivo=nombre_Archivo, parametros=parametros)
+            case "LinearSVC":
+                print(f"[EJECUCION] Entrenando modelo LinearSVC con {self.nombre_balanceador} ...")
+                self.LinearSVC(nombre_Archivo=nombre_Archivo, parametros=parametros)
             case "KNC":
                 print(f"[EJECUCION] Entrenando modelo KNeighborsClassifier con {self.nombre_balanceador}...")
                 self.KNC(nombre_Archivo=nombre_Archivo, parametros=parametros)
@@ -623,27 +623,33 @@ class Pipeline:
         print("[EJECUCION] Fin pipeline completo ...")
 
 #Funcion que sirve para sacar las metricas de entrenamiento para un modelo de embedding concreto
-def pipeline_modelo_entreno(modelo:str):
+def pipeline_modelo_entreno(modelo:str, preprocesar:bool = False, nomCarpeta:str="dataset9K"):
+
     nombre_dataset = f"{modelo.replace('/', '_')}_dataset.parquet"
+    
+    print("[EJECUCION] Preprocesando dataset ...")
+    if preprocesar:
+        procesador = Preprocesador(nomCarpeta, modelo)
+        procesador.procesar_dataset()
+    
     balSMOTE = BalanceadorSMOTE(nombre_dataset=nombre_dataset)
-    #balBORSMOTE = BalanceadorBorderlineSMOTE(nombre_dataset=nombre_dataset)
-    #balADASYN = BalanceadorADASYN(nombre_dataset=nombre_dataset)
-    #balENN = BalanceadorENN(nombre_dataset=nombre_dataset)
-    #balAKNN = BalanceadorAKNN(nombre_dataset=nombre_dataset)
+    balBORSMOTE = BalanceadorBorderlineSMOTE(nombre_dataset=nombre_dataset)
+    balADASYN = BalanceadorADASYN(nombre_dataset=nombre_dataset)
+    balENN = BalanceadorENN(nombre_dataset=nombre_dataset)
+    balAKNN = BalanceadorAKNN(nombre_dataset=nombre_dataset)
     
     pipelineSMOTE = Pipeline(nombre_modelo=modelo, balanceador=balSMOTE)
-    #pipelineBORSMOTE = Pipeline(nombre_modelo=modelo, balanceador=balBORSMOTE)
-    #pipelineADASYN = Pipeline(nombre_modelo=modelo, balanceador=balADASYN)
-    #pipelineENN = Pipeline(nombre_modelo=modelo, balanceador=balENN)
-    #pipelineAKNN = Pipeline(nombre_modelo=modelo, balanceador=balAKNN)
+    pipelineBORSMOTE = Pipeline(nombre_modelo=modelo, balanceador=balBORSMOTE)
+    pipelineADASYN = Pipeline(nombre_modelo=modelo, balanceador=balADASYN)
+    pipelineENN = Pipeline(nombre_modelo=modelo, balanceador=balENN)
+    pipelineAKNN = Pipeline(nombre_modelo=modelo, balanceador=balAKNN)
 
-    ejecutar_pipelines([pipelineSMOTE], preprocesar=False, algoritmo="RL", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
-    ejecutar_pipelines([pipelineSMOTE], preprocesar=False, algoritmo="XGBoost", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
-    ejecutar_pipelines([pipelineSMOTE], preprocesar=False, algoritmo="LinearSVM", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
-    ejecutar_pipelines([pipelineSMOTE], preprocesar=False, algoritmo="MLP", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
-    ejecutar_pipelines([pipelineSMOTE], preprocesar=False, algoritmo="KNC", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
-    ejecutar_pipelines([pipelineSMOTE], preprocesar=False, algoritmo="DTC", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
-    ejecutar_pipelines([pipelineSMOTE], preprocesar=False, algoritmo="MLP", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="RL", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="XGBoost", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="LinearSVC", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="MLP", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="KNC", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="DTC", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
     
 
 def ejecutar_pipelines(pipelines:list, preprocesar=False, algoritmo=None, nombre_Archivo="Resultados.xlsx"):
@@ -659,12 +665,12 @@ if __name__ == "__main__":
     pipeline_modelo_entreno(nombre_modelo)
     print("[FIN] Ejecución pipeline con Roberta Base ...")
     print("="*50)
-    '''
+    
     #EJECUCION PIPELINE XLM-ROBERTA-BASE
     print("="*50)
     print("[INICIO] Ejecución pipeline con XLM Roberta Base ...")
     nombre_modelo = "FacebookAI/xlm-roberta-base"
-    pipeline_modelo_entreno(nombre_modelo)
+    pipeline_modelo_entreno(nombre_modelo,preprocesar=True)
     print("[FIN] Ejecución pipeline con XLM Roberta Base ...")
     print("="*50)
 
@@ -672,8 +678,8 @@ if __name__ == "__main__":
     print("="*50)
     print("[INICIO] Ejecución pipeline con XLM Roberta Large ...")
     nombre_modelo = "FacebookAI/xlm-roberta-large"
-    pipeline_modelo_entreno(nombre_modelo)
+    pipeline_modelo_entreno(nombre_modelo,preprocesar=True)
     print("[FIN] Ejecución pipeline con XLM Roberta Large ...")
     print("="*50)
     '''
-    
+    '''
