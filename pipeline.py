@@ -4,18 +4,11 @@ import numpy as np
 import joblib
 from openpyxl import load_workbook
 import optuna
-
-from balanceador import *
-from procesador import Preprocesador
-
-from sklearn.model_selection import cross_val_score
-from sklearn.linear_model import LogisticRegression
-from sklearn.svm import LinearSVC
 from sklearn.metrics import classification_report, confusion_matrix, precision_recall_fscore_support, accuracy_score
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.neural_network import MLPClassifier
-from xgboost import XGBClassifier
+
+from balanceador import Balanceador, BalanceadorSMOTE, BalanceadorBorderlineSMOTE, BalanceadorADASYN, BalanceadorENN, BalanceadorAKNN
+from procesador import Preprocesador
+from clasificador import Clasificador, XGB, LR, MLPC,LSVC, DTC, KNC
 
 class Pipeline:
     def __init__(self, nombre_modelo, balanceador:Balanceador=None):
@@ -23,515 +16,31 @@ class Pipeline:
         self.nombre_balanceador = balanceador.__str__() if balanceador else None
         self.balanceador = balanceador
 
-    def xgboost(self, nombre_Archivo, parametros = None):
-        if not parametros: # En el caso de que no pasen parametros, se usan unos por defecto
-            parametros = {'n_estimators': 352, 'max_depth': 8, 'learning_rate': 0.041694500859353036, 'subsample': 0.6688508428769014, 'colsample_bytree': 0.6246885857257476, 'gamma': 0.6844100651211652, 'tree_method': 'hist',  
-                'device': 'cuda',       
-                'random_state': 42,
-                'n_jobs': 1
-                }
-                        
-        X_train_EI = np.array(self.balanceador.train_EI["Embedding"].tolist())
-        y_train_EI = self.balanceador.train_EI["MBTI"].tolist()
-        X_val_EI = np.array(self.balanceador.val_EI["Embedding"].tolist())
-        y_val_EI = self.balanceador.val_EI["MBTI"].tolist()
-
-        X_train_SN = np.array(self.balanceador.train_SN["Embedding"].tolist())
-        y_train_SN = self.balanceador.train_SN["MBTI"].tolist()
-        X_val_SN = np.array(self.balanceador.val_SN["Embedding"].tolist())
-        y_val_SN = self.balanceador.val_SN["MBTI"].tolist()
-        
-        X_train_TF = np.array(self.balanceador.train_TF["Embedding"].tolist())
-        y_train_TF = self.balanceador.train_TF["MBTI"].tolist()
-        X_val_TF = np.array(self.balanceador.val_TF["Embedding"].tolist())
-        y_val_TF = self.balanceador.val_TF["MBTI"].tolist()
-        
-        X_train_JP = np.array(self.balanceador.train_JP["Embedding"].tolist())
-        y_train_JP = self.balanceador.train_JP["MBTI"].tolist()
-        X_val_JP = np.array(self.balanceador.val_JP["Embedding"].tolist())
-        y_val_JP = self.balanceador.val_JP["MBTI"].tolist()
-        
-        ''' 
-        def objective(trial):
-            hiperparametros = {
-                'n_estimators': trial.suggest_int('n_estimators', 100, 800),#Eligira un numero entre 100 y 800
-                'max_depth': trial.suggest_int('max_depth', 3, 9),
-                'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.3, log=True),
-                
-                'subsample': trial.suggest_float('subsample', 0.6, 1.0),
-                'colsample_bytree': trial.suggest_float('colsample_bytree', 0.5, 1.0),
-                'gamma': trial.suggest_float('gamma', 0.0, 5.0),
-                
-                'tree_method': 'hist',  
-                'device': 'cuda',       
-                'random_state': 42,
-                'n_jobs': 1
-            }
-
-            # Instanciamos el modelo con los parámetros sugeridos por Optuna
-            modelo = XGBClassifier(**hiperparametros)
-
-            score = cross_val_score(modelo, X_train_EI, y_train_EI, cv=3, scoring="f1_macro", n_jobs=1)
-            return score.mean()
-
-        print("[EJECUCION] Iniciando Estudio Optuna para XGBoost...")
-        estudio = optuna.create_study(direction="maximize")
-        
-        estudio.optimize(objective, n_trials=20, gc_after_trial=True, n_jobs=1)
-
-        hiperparametros_info = {
-            'E/I': estudio.best_params
-        }
-
-        print(f"[INFO] Mejor combinación de hiperparámetros: {hiperparametros_info}")
-        nombre_archivo = "hiperparametros_XGBoost.txt"
-        with open(nombre_archivo, 'w') as f:
-            f.write(f"Hiperparámetros XGBoost - {self.nombre_modelo}\n")
-            f.write("="*50 + "\n\n")
-            for dimension, params in hiperparametros_info.items():
-                f.write(f"{dimension}: {params}\n")
-        
-        print(f"[INFO] Hiperparámetros guardados en {nombre_archivo}")
-
+    def entreno_clasificador(self, buscar_hiper:bool=False,parametros:dict=None, guardar:bool=True, nomExcel:str="resultados.xlsx") -> None:
         '''
-        
-        xgb_EI = XGBClassifier(**parametros)
-        xgb_EI.fit(X_train_EI, y_train_EI, eval_set=[(X_val_EI, y_val_EI)])
-        print("[INFO] Modelo E/I entrenado.")
-        xgb_SN = XGBClassifier(**parametros)
-        xgb_SN.fit(X_train_SN, y_train_SN, eval_set=[(X_val_SN, y_val_SN)])
-        print("[INFO] Modelo S/N entrenado.")
-        xgb_TF = XGBClassifier(**parametros)
-        xgb_TF.fit(X_train_TF, y_train_TF, eval_set=[(X_val_TF, y_val_TF)])
-        print("[INFO] Modelo T/F entrenado.")
-        xgb_JP = XGBClassifier(**parametros)
-        xgb_JP.fit(X_train_JP, y_train_JP, eval_set=[(X_val_JP, y_val_JP)])
-        print("[INFO] Modelo J/P entrenado.")
+        Funcion que entrena el clasificador elegido.
 
-        self.modelos = { 
-            'EI': xgb_EI,
-            'SN': xgb_SN,
-            'TF': xgb_TF,
-            'JP': xgb_JP
-        }
-        
-
-        self.guardar_resultados(nombre_Archivo=nombre_Archivo, metodo_balanceo=self.nombre_balanceador, parametros_str=str(parametros), modelo_clasificacion="XGBoost")
-        os.makedirs("modelos_XGB", exist_ok=True)
-        for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
-            self.guardar_modelo("modelos_XGB", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
-              
-      
-    def LinearSVC(self, nombre_Archivo, parametros = None):
-        if not parametros: # En el caso de que no pasen parametros, se usan unos por defecto
-            parametros = {'loss': 'squared_hinge', 'C': 9.605448156429867, 'tol': 0.0004119653918147926, 'fit_intercept': False,
-                          'random_state': 42,
-                          'class_weight':'balanced',
-                          'max_iter': 5000
-                          }
-
-        X_train_EI = np.array(self.balanceador.train_EI["Embedding"].tolist())
-        y_train_EI = self.balanceador.train_EI["MBTI"].tolist()
-
-        X_train_SN = np.array(self.balanceador.train_SN["Embedding"].tolist())
-        y_train_SN = self.balanceador.train_SN["MBTI"].tolist()
-        
-        X_train_TF = np.array(self.balanceador.train_TF["Embedding"].tolist())
-        y_train_TF = self.balanceador.train_TF["MBTI"].tolist()
-        
-        X_train_JP = np.array(self.balanceador.train_JP["Embedding"].tolist())
-        y_train_JP = self.balanceador.train_JP["MBTI"].tolist()
-        
-        '''
-        def objective(trial):
-            hiperparametros = {
-                'penalty': "l2",
-                'loss': trial.suggest_categorical("loss",['hinge', 'squared_hinge']),
-                'C': trial.suggest_float("C", 1e-4, 10.0, log=True),
-                'tol' : trial.suggest_float("tol", 1e-5, 1e-2, log=True),
-                'fit_intercept' : trial.suggest_categorical("fit_intercept", [True, False]),
-                
-                'random_state': 42,
-                'class_weight':'balanced',
-                'max_iter': 5000,
-            }
-
-            # Instanciamos el modelo con los parámetros sugeridos por Optuna
-            modelo = LinearSVC(**hiperparametros)
-
-            score = cross_val_score(modelo, X_train_EI, y_train_EI, cv=3, scoring="f1_macro", n_jobs=-1)
-            return score.mean()
-
-        print("[EJECUCION] Iniciando Estudio Optuna para LinearSVC...")
-        estudio = optuna.create_study(direction="maximize")
-        
-        estudio.optimize(objective, n_trials=20, gc_after_trial=True, n_jobs=-1)
-
-        hiperparametros_info = {
-            'E/I': estudio.best_params
-        }
-
-        print(f"[INFO] Mejor combinación de hiperparámetros: {hiperparametros_info}")
-        nombre_archivo = "hiperparametros_LinearSVC.txt"
-        with open(nombre_archivo, 'w') as f:
-            f.write(f"Hiperparámetros LinearSVC - {self.nombre_modelo}\n")
-            f.write("="*50 + "\n\n")
-            for dimension, params in hiperparametros_info.items():
-                f.write(f"{dimension}: {params}\n")
-        
-        print(f"[INFO] Hiperparámetros guardados en {nombre_archivo}")
-        
+        :param buscar_hiper: Bool que decide si buscar la mejor combinacion de hiperparametros antes de realizar el entreno. Si True se ignorarán los parametros recibidos en la función
+        :param parametros: Diccionario que contiene los parametros especificos para el entreno. En caso de no indicar ninguno, se usarán los parametros predefinidos de la clase
+        :param guardar: Bool que indica si se guardan los modelos en una carpeta local con el nombre del clasificador
+        :param nomExcel: Nombre del archivo excel en el que guardar los resultados de los modelos entrenados
+        :return: None
         '''
 
-        lSVM_EI = LinearSVC(**parametros).fit(X_train_EI, y_train_EI)
-        print("[INFO] Modelo E/I entrenado.")
-        lSVM_SN = LinearSVC(**parametros).fit(X_train_SN, y_train_SN)
-        print("[INFO] Modelo S/N entrenado.")
-        lSVM_TF = LinearSVC(**parametros).fit(X_train_TF, y_train_TF)
-        print("[INFO] Modelo T/F entrenado.")
-        lSVM_JP = LinearSVC(**parametros).fit(X_train_JP, y_train_JP)
-        print("[INFO] Modelo J/P entrenado.")
-
-        self.modelos = { 
-            'EI': lSVM_EI,
-            'SN': lSVM_SN,
-            'TF': lSVM_TF,
-            'JP': lSVM_JP
-        }
+        if buscar_hiper:
+            parametros = self.clasificador.busqueda_hiperparametros()
+        elif not parametros: 
+            parametros = self.clasificador.getParametros()
         
+        self.clasificador.entrenar_modelo()
 
-        self.guardar_resultados(nombre_Archivo=nombre_Archivo, metodo_balanceo=self.nombre_balanceador, parametros_str=str(parametros), modelo_clasificacion="LinearSVM")
-        os.makedirs("modelos_LinearSVM", exist_ok=True)
-        for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
-            self.guardar_modelo("modelos_LinearSVM", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
+        self.modelos = self.clasificador.getModelos()
         
+        if guardar:
+            self.clasificador.guardar_modelo(f"modelos_{self.clasificador.__str__()}", self.nombre_modelo.replace("/","_"))
 
-    def RL(self, nombre_Archivo, parametros = None):
+        self.guardar_resultados(nombre_Archivo=nomExcel, metodo_balanceo=self.nombre_balanceador, parametros_str=str(parametros), modelo_clasificacion=self.clasificador.__str__())
 
-        if not parametros: # En el caso de que no pasen parametros, se usan unos por defecto
-            parametros={'penalty': None, 'C': 9.732719859279047, 'solver': 'lbfgs', 'tol': 0.00010564097578389837, 'class_weight': 'balanced',
-                        'random_state': 42,
-                        'n_jobs': -1,
-                        'max_iter': 5000}
-
-        X_train_EI = np.array(self.balanceador.train_EI["Embedding"].tolist())
-        y_train_EI = self.balanceador.train_EI["MBTI"].tolist()
-
-        X_train_SN = np.array(self.balanceador.train_SN["Embedding"].tolist())
-        y_train_SN = self.balanceador.train_SN["MBTI"].tolist()
-        
-        X_train_TF = np.array(self.balanceador.train_TF["Embedding"].tolist())
-        y_train_TF = self.balanceador.train_TF["MBTI"].tolist()
-        
-        X_train_JP = np.array(self.balanceador.train_JP["Embedding"].tolist())
-        y_train_JP = self.balanceador.train_JP["MBTI"].tolist()
-        
-        '''
-        def objective(trial):
-            hiperparametros = {
-                'penalty': trial.suggest_categorical("penalty",["l1","l2",None]),
-                'C': trial.suggest_float("C", 1.0, 50.0, log=True),
-                'solver': trial.suggest_categorical("solver", ['lbfgs', 'liblinear', 'newton-cg']),
-                'tol' : trial.suggest_float("tol", 1e-5, 1e-2, log=True),
-                'random_state': 42,
-                'n_jobs': -1,
-                'class_weight': trial.suggest_categorical("class_weight", [None, 'balanced']),
-                'max_iter': 5000
-            }
-
-            # Instanciamos el modelo con los parámetros sugeridos por Optuna
-            modelo = LogisticRegression(**hiperparametros)
-
-            score = cross_val_score(modelo, X_train_EI, y_train_EI, cv=3, scoring="f1_macro", n_jobs=-1)
-            return score.mean()
-
-        print("[EJECUCION] Iniciando Estudio Optuna para LogisticRegresion...")
-        estudio = optuna.create_study(direction="maximize")
-        
-        estudio.optimize(objective, n_trials=20, gc_after_trial=True, n_jobs=-1)
-
-        hiperparametros_info = {
-            'E/I': estudio.best_params
-        }
-
-        print(f"[INFO] Mejor combinación de hiperparámetros: {hiperparametros_info}")
-        nombre_archivo = "hiperparametros_LogisticRegresion.txt"
-        with open(nombre_archivo, 'w') as f:
-            f.write(f"Hiperparámetros LogisticRegresion - {self.nombre_modelo}\n")
-            f.write("="*50 + "\n\n")
-            for dimension, params in hiperparametros_info.items():
-                f.write(f"{dimension}: {params}\n")
-        
-        print(f"[INFO] Hiperparámetros guardados en {nombre_archivo}")
-
-        '''
-        
-        lr_EI = LogisticRegression(**parametros).fit(X_train_EI, y_train_EI)
-        print("[INFO] Modelo E/I entrenado.")
-        lr_SN = LogisticRegression(**parametros).fit(X_train_SN, y_train_SN)
-        print("[INFO] Modelo S/N entrenado.")
-        lr_TF = LogisticRegression(**parametros).fit(X_train_TF, y_train_TF)
-        print("[INFO] Modelo T/F entrenado.")
-        lr_JP = LogisticRegression(**parametros).fit(X_train_JP, y_train_JP)
-        print("[INFO] Modelo J/P entrenado.")
-        
-        self.modelos = { 
-            'EI': lr_EI,
-            'SN': lr_SN,
-            'TF': lr_TF,
-            'JP': lr_JP
-        }
-
-        self.guardar_resultados(nombre_Archivo=nombre_Archivo, metodo_balanceo=self.nombre_balanceador, parametros_str=str(parametros), modelo_clasificacion="Regresión Logística")
-        os.makedirs("modelos_LR", exist_ok=True)
-        for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
-            self.guardar_modelo("modelos_LR", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
-        
-            
-    def KNC(self, nombre_Archivo, parametros = None):
-        if not parametros:
-            parametros = {'n_neighbors': 2, 'weights': 'distance', 'algorithm': 'brute', 'leaf_size': 14, 'metric': 'cosine',
-                          'n_jobs': -1 }
-
-        X_train_EI = np.array(self.balanceador.train_EI["Embedding"].tolist())
-        y_train_EI = self.balanceador.train_EI["MBTI"].tolist()
-
-        X_train_SN = np.array(self.balanceador.train_SN["Embedding"].tolist())
-        y_train_SN = self.balanceador.train_SN["MBTI"].tolist()
-        
-        X_train_TF = np.array(self.balanceador.train_TF["Embedding"].tolist())
-        y_train_TF = self.balanceador.train_TF["MBTI"].tolist()
-        
-        X_train_JP = np.array(self.balanceador.train_JP["Embedding"].tolist())
-        y_train_JP = self.balanceador.train_JP["MBTI"].tolist()
-        
-        '''
-        def objective(trial):
-            hiperparametros = {
-                'n_neighbors': trial.suggest_int("n_neighbors", 1, 15),
-                'weights': trial.suggest_categorical("weights", ['uniform', 'distance']),
-                'algorithm': trial.suggest_categorical("algorithm", ['auto', 'ball_tree', 'kd_tree', 'brute']),
-                'leaf_size': trial.suggest_int("leaf_size", 5, 40),
-                'metric': trial.suggest_categorical("metric", ['minkowski', 'euclidean', 'cosine']),
-                'n_jobs': -1 
-            }
-            modelo = KNeighborsClassifier(**hiperparametros)
-
-            score = cross_val_score(modelo, X_train_EI, y_train_EI, cv=3, scoring="f1_macro", n_jobs=-1)
-            return score.mean()
-
-        print("[EJECUCION] Iniciando Estudio Optuna para KNeighborsClassifier...")
-        estudio = optuna.create_study(direction="maximize")
-        
-        estudio.optimize(objective, n_trials=20, gc_after_trial=True, n_jobs=-1)
-
-        hiperparametros_info = {
-            'E/I': estudio.best_params
-        }
-
-        print(f"[INFO] Mejor combinación de hiperparámetros: {hiperparametros_info}")
-        nombre_archivo = "hiperparametros_KNC.txt"
-        with open(nombre_archivo, 'w') as f:
-            f.write(f"Hiperparámetros KNC - {self.nombre_modelo}\n")
-            f.write("="*50 + "\n\n")
-            for dimension, params in hiperparametros_info.items():
-                f.write(f"{dimension}: {params}\n")
-        
-        print(f"[INFO] Hiperparámetros guardados en {nombre_archivo}")
-
-
-        '''
-        
-        knc_EI = KNeighborsClassifier(**parametros).fit(X_train_EI, y_train_EI)
-        print("[INFO] Modelo E/I entrenado.")
-        knc_SN = KNeighborsClassifier(**parametros).fit(X_train_SN, y_train_SN)
-        print("[INFO] Modelo S/N entrenado.")
-        knc_TF = KNeighborsClassifier(**parametros).fit(X_train_TF, y_train_TF)
-        print("[INFO] Modelo T/F entrenado.")
-        knc_JP = KNeighborsClassifier(**parametros).fit(X_train_JP, y_train_JP)
-        print("[INFO] Modelo J/P entrenado.")
-        
-        self.modelos = { 
-            'EI': knc_EI,
-            'SN': knc_SN,
-            'TF': knc_TF,
-            'JP': knc_JP
-        }
-
-        self.guardar_resultados(nombre_Archivo=nombre_Archivo, metodo_balanceo=self.nombre_balanceador, parametros_str=str(parametros), modelo_clasificacion="KNeighboursClassifier")
-        os.makedirs("modelos_LR", exist_ok=True)
-        for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
-            self.guardar_modelo("modelos_LR", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
-        
-            
-    def DTC(self, nombre_Archivo, parametros = None):
-        if not parametros:
-            parametros = {'criterion': 'gini', 'max_depth': 15, 'min_samples_split': 9, 'min_samples_leaf': 4, 'max_features': None, 'class_weight': None,
-                          'random_state': 42}
-
-        X_train_EI = np.array(self.balanceador.train_EI["Embedding"].tolist())
-        y_train_EI = self.balanceador.train_EI["MBTI"].tolist()
-
-        X_train_SN = np.array(self.balanceador.train_SN["Embedding"].tolist())
-        y_train_SN = self.balanceador.train_SN["MBTI"].tolist()
-        
-        X_train_TF = np.array(self.balanceador.train_TF["Embedding"].tolist())
-        y_train_TF = self.balanceador.train_TF["MBTI"].tolist()
-        
-        X_train_JP = np.array(self.balanceador.train_JP["Embedding"].tolist())
-        y_train_JP = self.balanceador.train_JP["MBTI"].tolist()
-        
-        '''
-        def objective(trial):
-            hiperparametros = {
-                'criterion': trial.suggest_categorical("criterion", ["gini", "entropy"]),
-                'max_depth': trial.suggest_int("max_depth", 3, 20),
-                'min_samples_split': trial.suggest_int("min_samples_split", 2, 50),
-                'min_samples_leaf': trial.suggest_int("min_samples_leaf", 1, 20),
-                'max_features': trial.suggest_categorical("max_features", [None, "sqrt", "log2"]),
-                'class_weight': trial.suggest_categorical("class_weight", [None, "balanced"]),
-                'random_state': 42
-            }
-
-            # Instanciamos el modelo con los parámetros sugeridos por Optuna
-            modelo = DecisionTreeClassifier(**hiperparametros)
-
-            # Ojo: DecisionTree no usa n_jobs internamente en el modelo, pero cross_val_score sí
-            score = cross_val_score(modelo, X_train_EI, y_train_EI, cv=3, scoring="f1_macro", n_jobs=-1)
-            return score.mean()
-
-        print("[EJECUCION] Iniciando Estudio Optuna para DTC...")
-        estudio = optuna.create_study(direction="maximize")
-        
-        # El árbol simple es muy rápido de entrenar, 30 iteraciones se harán en nada
-        estudio.optimize(objective, n_trials=30, gc_after_trial=True, n_jobs=-1)
-
-        hiperparametros_info = {
-            'E/I': estudio.best_params
-        }
-
-        print(f"[INFO] Mejor combinación de hiperparámetros: {hiperparametros_info}")
-        nombre_archivo = "hiperparametros_DTC.txt"
-        with open(nombre_archivo, 'w') as f:
-            f.write(f"Hiperparámetros DTC - {self.nombre_modelo}\n")
-            f.write("="*50 + "\n\n")
-            for dimension, params in hiperparametros_info.items():
-                f.write(f"{dimension}: {params}\n")
-        
-        print(f"[INFO] Hiperparámetros guardados en {nombre_archivo}")
-
-        '''
-        
-        dtc_EI = DecisionTreeClassifier(**parametros).fit(X_train_EI, y_train_EI)
-        print("[INFO] Modelo E/I entrenado.")
-        dtc_SN = DecisionTreeClassifier(**parametros).fit(X_train_SN, y_train_SN)
-        print("[INFO] Modelo S/N entrenado.")
-        dtc_TF = DecisionTreeClassifier(**parametros).fit(X_train_TF, y_train_TF)
-        print("[INFO] Modelo T/F entrenado.")
-        dtc_JP = DecisionTreeClassifier(**parametros).fit(X_train_JP, y_train_JP)
-        print("[INFO] Modelo J/P entrenado.")
-        
-        self.modelos = { 
-            'EI': dtc_EI,
-            'SN': dtc_SN,
-            'TF': dtc_TF,
-            'JP': dtc_JP
-        }
-
-        self.guardar_resultados(nombre_Archivo=nombre_Archivo, metodo_balanceo=self.nombre_balanceador, parametros_str=str(parametros), modelo_clasificacion="DecisionTreeClassifier")
-        os.makedirs("modelos_LR", exist_ok=True)
-        for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
-            self.guardar_modelo("modelos_LR", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
-        
-        
-    def MLP(self, nombre_Archivo, parametros = None):
-        if not parametros:
-            parametros = {'hidden_layer_sizes': (256, 128, 64), 'activation': 'tanh', 'solver': 'adam', 'learning_rate': 'constant', 'learning_rate_init': 0.001,
-                          'early_stopping': True,
-                          'max_iter':6000,
-                          'random_state':42}
-
-        X_train_EI = np.array(self.balanceador.train_EI["Embedding"].tolist())
-        y_train_EI = self.balanceador.train_EI["MBTI"].tolist()
-
-        X_train_SN = np.array(self.balanceador.train_SN["Embedding"].tolist())
-        y_train_SN = self.balanceador.train_SN["MBTI"].tolist()
-        
-        X_train_TF = np.array(self.balanceador.train_TF["Embedding"].tolist())
-        y_train_TF = self.balanceador.train_TF["MBTI"].tolist()
-        
-        X_train_JP = np.array(self.balanceador.train_JP["Embedding"].tolist())
-        y_train_JP = self.balanceador.train_JP["MBTI"].tolist()
-        
-        '''
-        # Funcion objetivo para optuna
-        def objective(trial):
-            # Optuna elige combinaciones inteligentemente en cada "intento"
-            hidden_layer_sizes = trial.suggest_categorical("hidden_layer_sizes", [(256,256,128), (128,128,64), (256,128,64)])
-            activation = trial.suggest_categorical("activation", ['logistic', 'tanh', 'relu'])
-            solver = trial.suggest_categorical("solver", ['sgd', 'adam'])
-            learning_rate = trial.suggest_categorical("learning_rate", ['constant', 'invscaling'])
-            learning_rate_init = trial.suggest_categorical("learning_rate_init", [0.001, 0.0005])
-
-            # Parche de seguridad: 'lbfgs' crashea si le pones early_stopping=True
-            usa_early_stopping = True if solver in ['sgd', 'adam'] else False
-
-            # Instanciamos el modelo con los parámetros sugeridos por Optuna
-            modelo = MLPClassifier(
-                hidden_layer_sizes=hidden_layer_sizes,
-                activation=activation,
-                solver=solver,
-                learning_rate=learning_rate,
-                learning_rate_init=learning_rate_init,
-                early_stopping=usa_early_stopping,
-                max_iter=6000,
-                random_state=42
-            )
-
-            score = cross_val_score(modelo, X_train_EI, y_train_EI, cv=3, scoring="f1_macro", n_jobs=-1) #Usamos los datasets de entrenos de EI ya que es el que mas desbalanceado está
-            return score.mean()
-
-        print("[EJECUCION] Iniciando Estudio Optuna para MLP...")
-        estudio = optuna.create_study(direction="maximize")
-        
-        estudio.optimize(objective, n_trials=20, gc_after_trial=True, n_jobs=-1)
-
-        hiperparametros_info = {
-            'E/I': estudio.best_params
-        }
-
-        print(f"[INFO] Mejor combinación de hiperparámetros: {hiperparametros_info}")
-        nombre_archivo = "hiperparametros_MLP.txt"
-        with open(nombre_archivo, 'w') as f:
-            f.write(f"Hiperparámetros MLP - {self.nombre_modelo}\n")
-            f.write("="*50 + "\n\n")
-            for dimension, params in hiperparametros_info.items():
-                f.write(f"{dimension}: {params}\n")
-        
-        print(f"[INFO] Hiperparámetros guardados en {nombre_archivo}")
-        '''
-        
-        mlp_EI = MLPClassifier(**parametros).fit(X_train_EI, y_train_EI)
-        print("[INFO] Modelo E/I entrenado.")
-        mlp_SN = MLPClassifier(**parametros).fit(X_train_SN, y_train_SN)
-        print("[INFO] Modelo S/N entrenado.")
-        mlp_TF = MLPClassifier(**parametros).fit(X_train_TF, y_train_TF)
-        print("[INFO] Modelo T/F entrenado.")
-        mlp_JP = MLPClassifier(**parametros).fit(X_train_JP, y_train_JP)
-        print("[INFO] Modelo J/P entrenado.")
-        
-        self.modelos = { 
-            'EI': mlp_EI,
-            'SN': mlp_SN,
-            'TF': mlp_TF,
-            'JP': mlp_JP
-        }
-
-        self.guardar_resultados(nombre_Archivo=nombre_Archivo, metodo_balanceo=self.nombre_balanceador, parametros_str=str(parametros), modelo_clasificacion="MLP")
-        os.makedirs("modelos_LR", exist_ok=True)
-        for modelo, nombre in zip(self.modelos.values(), ["E-I", "S-N", "T-F", "J-P"]):   
-            self.guardar_modelo("modelos_LR", modelo, f"{nombre}_{self.nombre_modelo.replace('/', '_')}.pkl")
-        
     def obtener_metricas(self, modelo, df_test, nombre_modelo):
         X_test = np.array(df_test["Embedding"].tolist(), dtype=np.float32)
         y_test = df_test["MBTI"].tolist()
@@ -555,10 +64,10 @@ class Pipeline:
         print(f"[INFO] Exportando resultados a Excel (Pestaña: {metodo_balanceo})...")
     
         filas = []
-        filas.append(self.obtener_metricas(self.modelos['EI'], self.balanceador.test_EI, f"{modelo_clasificacion} E/I"))
-        filas.append(self.obtener_metricas(self.modelos['SN'], self.balanceador.test_SN, f"{modelo_clasificacion} S/N"))
-        filas.append(self.obtener_metricas(self.modelos['TF'], self.balanceador.test_TF, f"{modelo_clasificacion} T/F"))
-        filas.append(self.obtener_metricas(self.modelos['JP'], self.balanceador.test_JP, f"{modelo_clasificacion} J/P"))
+        filas.append(self.obtener_metricas(self.modelos['E/I'], self.balanceador.test_EI, f"{modelo_clasificacion} E/I"))
+        filas.append(self.obtener_metricas(self.modelos['S/N'], self.balanceador.test_SN, f"{modelo_clasificacion} S/N"))
+        filas.append(self.obtener_metricas(self.modelos['T/F'], self.balanceador.test_TF, f"{modelo_clasificacion} T/F"))
+        filas.append(self.obtener_metricas(self.modelos['J/P'], self.balanceador.test_JP, f"{modelo_clasificacion} J/P"))
         
         df_resultados = pd.DataFrame(filas)
         
@@ -586,39 +95,40 @@ class Pipeline:
 
         print(f"[INFO] Resultados guardados en {archivo_excel}")
 
-    def guardar_modelo(self, carpeta, modelo, nombre_archivo):
-        if not os.path.exists(carpeta):
-            os.makedirs(carpeta)
-        joblib.dump(modelo, os.path.join(carpeta, nombre_archivo))
 
     #Pipeline que sirve para comprobar la mejor combinacion de hiperparametros para un modelo de clasificacion concreto
-    def ejecutar_pipeline_entreno(self,nomCarpeta="dataset9K", preprocesar=True, parametros=None, algotitmo=None, nombre_Archivo="resultados.xlsx"):
+    def ejecutar_pipeline_entreno(self,preprocesar=True, parametros=None, algotitmo=None, nombre_Archivo="resultados.xlsx"):
         print("[EJECUCION] Ejecutando pipeline completo ...")
         
         print("[EJECUCION] Dividiendo y balanceando dataset ...")
         self.balanceador.dividir_balancear()
 
+        self.clasificador:Clasificador = None
+
         match algotitmo:
             case "RL": 
                 print(f"[EJECUCION] Entrenando modelo de Regresión Logística con {self.nombre_balanceador} ...")
-                self.RL(nombre_Archivo=nombre_Archivo, parametros=parametros)
+                self.clasificador = LR(balanceador=self.balanceador)
             case "XGBoost":
                 print(f"[EJECUCION] Entrenando modelo XGBoost con {self.nombre_balanceador} ...")
-                self.xgboost(nombre_Archivo=nombre_Archivo, parametros=parametros)
+                self.clasificador = XGB(balanceador=self.balanceador)
             case "LinearSVC":
                 print(f"[EJECUCION] Entrenando modelo LinearSVC con {self.nombre_balanceador} ...")
-                self.LinearSVC(nombre_Archivo=nombre_Archivo, parametros=parametros)
+                self.clasificador = LSVC(balanceador=self.balanceador)
             case "KNC":
                 print(f"[EJECUCION] Entrenando modelo KNeighborsClassifier con {self.nombre_balanceador}...")
-                self.KNC(nombre_Archivo=nombre_Archivo, parametros=parametros)
+                self.clasificador = KNC(balanceador=self.balanceador)
             case "DTC":
                 print(f"[EJECUCION] Entrenando modelo DecisionTreeClassifier con {self.nombre_balanceador}...")
-                self.DTC(nombre_Archivo=nombre_Archivo, parametros=parametros)
+                self.clasificador = DTC(balanceador=self.balanceador)
             case "MLP":
                 print(f"[EJECUCION] Entrenando modelo MultiLayerPerceptron con {self.nombre_balanceador}...")
-                self.MLP(nombre_Archivo=nombre_Archivo, parametros=parametros)
+                self.clasificador = MLPC(balanceador=self.balanceador)
             case _ : 
                 print("[ERROR] Modelo de clasificación no reconocido")
+                return None        
+        
+        self.entreno_clasificador(parametros=parametros)
 
         print("[EJECUCION] Fin pipeline completo ...")
 
