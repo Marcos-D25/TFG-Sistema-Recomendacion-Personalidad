@@ -5,7 +5,6 @@ __pycache__/
 
 dataset*/
 hiperparametros_*.txt
-resultados/
 .vscode/
 .idea/
 # C extensions

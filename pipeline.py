@@ -64,10 +64,10 @@ class Pipeline:
         print(f"[INFO] Exportando resultados a Excel (Pestaña: {metodo_balanceo})...")
     
         filas = []
-        filas.append(self.obtener_metricas(self.modelos['E/I'], self.balanceador.test_EI, f"{modelo_clasificacion} E/I"))
-        filas.append(self.obtener_metricas(self.modelos['S/N'], self.balanceador.test_SN, f"{modelo_clasificacion} S/N"))
-        filas.append(self.obtener_metricas(self.modelos['T/F'], self.balanceador.test_TF, f"{modelo_clasificacion} T/F"))
-        filas.append(self.obtener_metricas(self.modelos['J/P'], self.balanceador.test_JP, f"{modelo_clasificacion} J/P"))
+        filas.append(self.obtener_metricas(self.modelos['E-I'], self.balanceador.test_EI, f"{modelo_clasificacion} E/I"))
+        filas.append(self.obtener_metricas(self.modelos['S-N'], self.balanceador.test_SN, f"{modelo_clasificacion} S/N"))
+        filas.append(self.obtener_metricas(self.modelos['T-F'], self.balanceador.test_TF, f"{modelo_clasificacion} T/F"))
+        filas.append(self.obtener_metricas(self.modelos['J-P'], self.balanceador.test_JP, f"{modelo_clasificacion} J/P"))
         
         df_resultados = pd.DataFrame(filas)
         
@@ -97,7 +97,7 @@ class Pipeline:
 
 
     #Pipeline que sirve para comprobar la mejor combinacion de hiperparametros para un modelo de clasificacion concreto
-    def ejecutar_pipeline_entreno(self,preprocesar=True, parametros=None, algotitmo=None, nombre_Archivo="resultados.xlsx"):
+    def ejecutar_pipeline_entreno(self, parametros=None, algotitmo=None, nombre_Archivo="resultados.xlsx"):
         print("[EJECUCION] Ejecutando pipeline completo ...")
         
         print("[EJECUCION] Dividiendo y balanceando dataset ...")
@@ -128,7 +128,7 @@ class Pipeline:
                 print("[ERROR] Modelo de clasificación no reconocido")
                 return None        
         
-        self.entreno_clasificador(parametros=parametros)
+        self.entreno_clasificador(parametros=parametros, nomExcel=nombre_Archivo)
 
         print("[EJECUCION] Fin pipeline completo ...")
 
@@ -139,32 +139,34 @@ def pipeline_modelo_entreno(modelo:str, preprocesar:bool = False, nomCarpeta:str
     
     print("[EJECUCION] Preprocesando dataset ...")
     if preprocesar:
-        procesador = Preprocesador(nomCarpeta, modelo)
+        procesador = Preprocesador(modelo)
+        procesador.cargar_dataset(nomCarpeta)
         procesador.procesar_dataset()
     
-    balSMOTE = BalanceadorSMOTE(nombre_dataset=nombre_dataset)
-    balBORSMOTE = BalanceadorBorderlineSMOTE(nombre_dataset=nombre_dataset)
-    balADASYN = BalanceadorADASYN(nombre_dataset=nombre_dataset)
-    balENN = BalanceadorENN(nombre_dataset=nombre_dataset)
-    balAKNN = BalanceadorAKNN(nombre_dataset=nombre_dataset)
+    balSMOTE = BalanceadorSMOTE(nomCarpeta, nombre_dataset=nombre_dataset)
+    #balBORSMOTE = BalanceadorBorderlineSMOTE(nombre_dataset=nombre_dataset)
+    #balADASYN = BalanceadorADASYN(nombre_dataset=nombre_dataset)
+    #balENN = BalanceadorENN(nombre_dataset=nombre_dataset)
+    #balAKNN = BalanceadorAKNN(nombre_dataset=nombre_dataset)
     
     pipelineSMOTE = Pipeline(nombre_modelo=modelo, balanceador=balSMOTE)
-    pipelineBORSMOTE = Pipeline(nombre_modelo=modelo, balanceador=balBORSMOTE)
-    pipelineADASYN = Pipeline(nombre_modelo=modelo, balanceador=balADASYN)
-    pipelineENN = Pipeline(nombre_modelo=modelo, balanceador=balENN)
-    pipelineAKNN = Pipeline(nombre_modelo=modelo, balanceador=balAKNN)
+    #pipelineBORSMOTE = Pipeline(nombre_modelo=modelo, balanceador=balBORSMOTE)
+    #pipelineADASYN = Pipeline(nombre_modelo=modelo, balanceador=balADASYN)
+    #pipelineENN = Pipeline(nombre_modelo=modelo, balanceador=balENN)
+    #pipelineAKNN = Pipeline(nombre_modelo=modelo, balanceador=balAKNN)
 
-    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="RL", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
-    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="XGBoost", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
-    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="LinearSVC", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
-    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="MLP", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
-    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="KNC", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
-    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="DTC", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    ejecutar_pipelines([pipelineSMOTE] ,algoritmo="XGBoost", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="RL", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="XGBoost", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="LinearSVC", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="MLP", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="KNC", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
+    #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="DTC", nombre_Archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx")
     
 
-def ejecutar_pipelines(pipelines:list, preprocesar=False, algoritmo=None, nombre_Archivo="Resultados.xlsx"):
+def ejecutar_pipelines(pipelines:list, algoritmo=None, nombre_Archivo="Resultados.xlsx"):
     for pipeline in pipelines:
-        pipeline.ejecutar_pipeline_entreno(preprocesar=preprocesar, algotitmo=algoritmo, nombre_Archivo=nombre_Archivo)
+        pipeline.ejecutar_pipeline_entreno(algotitmo=algoritmo, nombre_Archivo=nombre_Archivo)
 
 if __name__ == "__main__":
    
@@ -172,10 +174,10 @@ if __name__ == "__main__":
     print("="*50)
     print("[INICIO] Ejecución pipeline con Roberta Base ...")
     nombre_modelo = "FacebookAI/roberta-base"
-    pipeline_modelo_entreno(nombre_modelo)
+    pipeline_modelo_entreno(nombre_modelo, nomCarpeta="dataset100K", preprocesar=False)
     print("[FIN] Ejecución pipeline con Roberta Base ...")
     print("="*50)
-    
+    '''
     #EJECUCION PIPELINE XLM-ROBERTA-BASE
     print("="*50)
     print("[INICIO] Ejecución pipeline con XLM Roberta Base ...")
@@ -192,4 +194,4 @@ if __name__ == "__main__":
     print("[FIN] Ejecución pipeline con XLM Roberta Large ...")
     print("="*50)
     '''
-    '''
+    

@@ -20,17 +20,17 @@ class Clasificador(ABC):
         self.datasetVal = {}
         self.modelos = {}
 
-        self.datasetEnterno["E/I"] = (np.array(self.balanceador.train_EI["Embedding"].tolist()), self.balanceador.train_EI["MBTI"].tolist())
-        self.datasetVal["E/I"] = (np.array(self.balanceador.val_EI["Embedding"].tolist()), self.balanceador.val_EI["MBTI"].tolist())
+        self.datasetEnterno["E-I"] = (np.array(self.balanceador.train_EI["Embedding"].tolist()), self.balanceador.train_EI["MBTI"].tolist())
+        self.datasetVal["E-I"] = (np.array(self.balanceador.val_EI["Embedding"].tolist()), self.balanceador.val_EI["MBTI"].tolist())
 
-        self.datasetEnterno["S/N"] = (np.array(self.balanceador.train_SN["Embedding"].tolist()), self.balanceador.train_SN["MBTI"].tolist())
-        self.datasetVal["S/N"] = (np.array(self.balanceador.val_SN["Embedding"].tolist()), self.balanceador.val_SN["MBTI"].tolist())
+        self.datasetEnterno["S-N"] = (np.array(self.balanceador.train_SN["Embedding"].tolist()), self.balanceador.train_SN["MBTI"].tolist())
+        self.datasetVal["S-N"] = (np.array(self.balanceador.val_SN["Embedding"].tolist()), self.balanceador.val_SN["MBTI"].tolist())
 
-        self.datasetEnterno["T/F"] = (np.array(self.balanceador.train_TF["Embedding"].tolist()), self.balanceador.train_TF["MBTI"].tolist())
-        self.datasetVal["T/F"] = (np.array(self.balanceador.val_TF["Embedding"].tolist()), self.balanceador.val_TF["MBTI"].tolist())
+        self.datasetEnterno["T-F"] = (np.array(self.balanceador.train_TF["Embedding"].tolist()), self.balanceador.train_TF["MBTI"].tolist())
+        self.datasetVal["T-F"] = (np.array(self.balanceador.val_TF["Embedding"].tolist()), self.balanceador.val_TF["MBTI"].tolist())
 
-        self.datasetEnterno["J/P"] = (np.array(self.balanceador.train_JP["Embedding"].tolist()), self.balanceador.train_JP["MBTI"].tolist())
-        self.datasetVal["J/P"] = (np.array(self.balanceador.val_JP["Embedding"].tolist()), self.balanceador.val_JP["MBTI"].tolist())
+        self.datasetEnterno["J-P"] = (np.array(self.balanceador.train_JP["Embedding"].tolist()), self.balanceador.train_JP["MBTI"].tolist())
+        self.datasetVal["J-P"] = (np.array(self.balanceador.val_JP["Embedding"].tolist()), self.balanceador.val_JP["MBTI"].tolist())
         
     
     @abstractmethod
@@ -62,7 +62,7 @@ class Clasificador(ABC):
         '''
         if not parametros:
             parametros = self.parametros
-        for dimension in ["E/I","S/N","T/F","J/P"]:
+        for dimension in ["E-I","S-N","T-F","J-P"]:
             self.entrenar_dimension(parametros|{"dimension":dimension})
 
     def guardar_dimension(self,modelo, dimension:str, carpeta:str, sufijo_archivo:str):
@@ -87,7 +87,7 @@ class Clasificador(ABC):
         :param sufijo_archivo: Sufijo del archivo
         :return: None
         '''
-        for dimension in ["E/I","S/N","T/F","J/P"]:
+        for dimension in ["E-I","S-N","T-F","J-P"]:
             self.guardar_dimension(self.modelos[dimension], dimension, carpeta, sufijo_archivo)
 
     def getModelos(self) -> dict:
