@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 
 class Balanceador(ABC):
 
-    def __init__(self,nomCarpeta:str = "dataset9K", nombre_dataset:str = None):
+    def __init__(self,nomCarpeta:str = "datasetRB", nombre_dataset:str = None):
         '''
         Inicializador de clase.
         

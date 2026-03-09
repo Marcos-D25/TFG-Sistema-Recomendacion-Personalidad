@@ -4,6 +4,8 @@ __pycache__/
 *$py.class
 
 dataset*/
+robertaFT/
+balanceador copy.py
 hiperparametros_*.txt
 .vscode/
 .idea/

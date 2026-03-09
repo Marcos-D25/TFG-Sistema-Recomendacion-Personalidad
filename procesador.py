@@ -17,7 +17,7 @@ class Preprocesador:
         :param dispositivo: Predefinido a 'cuda' si quiere entrenar el modelo usando una tarjeta grafica compatible. Tambien se puede usar 'cpu'
         '''
         self.nombre_modelo = nombre_modelo
-
+        self.dataset = None
         print(f"[INFO] Cargando tokenizador: {nombre_modelo}")
         self.tokenizer = AutoTokenizer.from_pretrained(nombre_modelo)
 
@@ -137,11 +137,13 @@ class Preprocesador:
 
         return embedding_final.cpu().numpy().flatten() #Bajamos el vector de la VRAM a la CPU y lo convertimos de una matriz (1, 768) a un vector (768,)
 
-    def procesar_dataset(self) -> None:
+    def procesar_dataset(self, carpeta_dest="dataset9K", nom_archivo="MBTI_procesado") -> None:
         '''
         Esta funcion se encarga de, a partir del texto del dataset original, generar y guardar el embedding en una nueva columna llamada "embedding".
         Lanzará un error si previamente no se ha cargado en la clase el dataset
 
+        :param carpeta_dest: Carpeta en la que se guardará el dataset
+        :param nom_archivo: Nombre con el que se guardará el dataset parquet
         :return: None
         '''
 
@@ -171,7 +173,10 @@ class Preprocesador:
             "T/F": self.dataset["T/F"].tolist(),
             "J/P": self.dataset["J/P"].tolist()
         })
-        self.guardar_dataset(df_final)
+
+        if not os.path.exists(carpeta_dest):
+            os.mkdir(carpeta_dest)
+        self.guardar_dataset_parquet(df_final, carpeta_dest, nom_archivo)
 
     def procesar_texto(self, texto) -> ndarray:
         '''
@@ -185,11 +190,28 @@ class Preprocesador:
         texto_tokenizado = self.tokenizar_texto(texto_limpio)
         return self.extraer_embeddings(texto_tokenizado)
 
-    def guardar_dataset(self, dataset):
-        modelo_limpio = self.nombre_modelo.replace("/", "_")
-        ruta_archivo = os.path.join(self.nomCarpeta, f"{modelo_limpio}_dataset.parquet")
+    def guardar_dataset_parquet(self, dataset, carpeta_dest, nom_archivo):
+        '''
+        Funcion que guarda en un archivo .parquet el dataset pasado como parametro
+
+        :param dataset: Dataset a guardar
+        :param carpeta_dest: Carpeta en la que se guardará el dataset
+        :param nom_archivo: Nombre que obtendrá el dataset guardado 
+        '''
+        ruta_archivo = os.path.join(carpeta_dest, f"{nom_archivo}.parquet")
         dataset.to_parquet(ruta_archivo, engine="pyarrow")
         print(f"[EXITO] Dataset guardado en: {ruta_archivo}")
+
+    def guardar_dataset_csv(self, dataset, ruta):
+        '''
+        Funcion que guarda en un archivo .csv el dataset pasado como parametro
+
+        :param dataset: Dataset a guardar
+        :param ruta: Ruta en la que se guarda el dataset
+        '''
+        dataset.to_csv(ruta, index=False, encoding='utf-8')
+        print(f"[EXITO] Dataset guardado en: {ruta}")
+
 
 
 def ejecutar_preprocesador(preprocesador:Preprocesador):
@@ -201,12 +223,15 @@ def ejecutar_preprocesador(preprocesador:Preprocesador):
 
 
 def main():
-    
+    '''
     print("[EJECUCION] Ejecutando ROBERTA BASE...]")
     robertaBase = Preprocesador("FacebookAI/roberta-base")
-    ejecutar_preprocesador(robertaBase)
+    robertaBase.cargar_dataset()
+    robertaBase.reformular_clases()
+    robertaBase.dataset["posts"] = robertaBase.dataset["posts"].apply(robertaBase.limpiar_texto)
+
+    robertaBase.guardar_dataset_csv(robertaBase.dataset, os.path.join("dataset9K", "MBTI_limpio.csv"))
     print("[EJECUCION] ROBERTA BASE guardado]\n\n")
-    '''
     print("[EJECUCION] Ejecutando XML ROBERTA BASE...]")
     xml_robertaBase = Preprocesador(os.path.join("datasets","MBTI_sinProcesar.csv"),"FacebookAI/xlm-roberta-base")
     ejecutar_preprocesador(xml_robertaBase)
@@ -217,5 +242,25 @@ def main():
     ejecutar_preprocesador(xml_robertaLarge)
     print("[EJECUCION] XML ROBERTA LARGE guardado]\n\n")
     '''
+
+    print("[EJECUCION] Ejecutando ROBERTA BASE FT...")
+    robertaFTEI = Preprocesador("./robertaFT/E-I_roberta-base")
+    robertaFTEI.cargar_dataset()
+    robertaFTEI.procesar_dataset(carpeta_dest="datasetRBFT", nom_archivo="datasetEI")
+
+    robertaFTJP = Preprocesador("./robertaFT/J-P_roberta-base")
+    robertaFTJP.cargar_dataset()
+    robertaFTJP.procesar_dataset(carpeta_dest="datasetRBFT", nom_archivo="datasetJP")
+
+    robertaFTSN = Preprocesador("./robertaFT/S-N_roberta-base")
+    robertaFTSN.cargar_dataset()
+    robertaFTSN.procesar_dataset(carpeta_dest="datasetRBFT", nom_archivo="datasetSN")
+
+    robertaFTTF = Preprocesador("./robertaFT/T-F_roberta-base")
+    robertaFTTF.cargar_dataset()
+    robertaFTTF.procesar_dataset(carpeta_dest="datasetRBFT", nom_archivo="datasetTF")
+
+    print("[EJECUCION] Fin ROBERTA BASE FT...")
+
 if __name__ == "__main__":
     main()
