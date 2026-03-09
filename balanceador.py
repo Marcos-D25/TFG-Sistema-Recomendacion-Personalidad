@@ -1,3 +1,4 @@
+
 import os
 from sklearn.model_selection import train_test_split
 from collections import Counter
@@ -9,13 +10,34 @@ from abc import ABC, abstractmethod
 
 class Balanceador(ABC):
 
-    def __init__(self,nomCarpeta:str = "datasetRB", nombre_dataset:str = None):
+    def __init__(self, nomCarpeta: str = "datasetRBFT", balancear: bool = True):
         '''
-        Inicializador de clase.
+        Inicializador de clase que carga los cuatro archivos individuales de cada eje dentro
+        de la carpeta proporcionada. Cada archivo debe llamarse:
+        - datasetEI.parquet
+        - datasetSN.parquet
+        - datasetTF.parquet
+        - datasetJP.parquet
+
+        :param nomCarpeta: Ruta a la carpeta que contiene los datasets.
+        :param balancear: Si se debe aplicar balanceo sintético al conjunto de entrenamiento.
+        '''
+        self.nomCarpeta = nomCarpeta
+        self.balancear_flag = balancear
+
+        self.datasets = {
+            'E/I': pd.read_parquet(os.path.join(nomCarpeta, "datasetEI.parquet")),
+            'S/N': pd.read_parquet(os.path.join(nomCarpeta, "datasetSN.parquet")),
+            'T/F': pd.read_parquet(os.path.join(nomCarpeta, "datasetTF.parquet")),
+            'J/P': pd.read_parquet(os.path.join(nomCarpeta, "datasetJP.parquet")),
+        }
+
+        self.train_EI = self.test_EI = self.val_EI = None
+        self.train_SN = self.test_SN = self.val_SN = None
+        self.train_TF = self.test_TF = self.val_TF = None
+        self.train_JP = self.test_JP = self.val_JP = None
+
         
-        :param nombre_dataset: Nombre del archivo del dataset, se espera que esté en la carpeta local "datasets"
-        '''
-        self.dataset = pd.read_parquet(os.path.join(nomCarpeta, nombre_dataset))
 
     def balancear(self, dataset:pd.DataFrame, columnas:dict={"c1":"Embedding", "c2": "MBTI"}) -> pd.DataFrame:
         '''
@@ -56,96 +78,89 @@ class Balanceador(ABC):
             print(f"⚠️ [AVISO] {self.balanceador.__str__()} falló: {e}")
             return dataset.copy()
 
-    def dividir_balancear(self, balancear:bool = True) -> None:
+    def dividir_balancear_df(self, df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         '''
-        Funcion que genera un dataset por cada subclase E/I S/N T/F J/P, de cada dataset se subdivide en sets de entrenamiento.
-            80% Entrenamiento - 10% Validacion - 10% Test
+        Divide un DataFrame en train/val/test (80/10/10) y aplica balanceo al conjunto de
+        entrenamiento si está habilitado.
 
-        :param balancear: Indica si se quiere aplicar una tecnica de balanceo o no
-        :return: None
+        :param df: DataFrame con columnas "Embedding" y "MBTI".
+        :return: (train, test, val)
         '''
-        dataset_EI = self.dataset[["Embedding", "E/I"]].rename(columns={"E/I": "MBTI"})
-        dataset_SN = self.dataset[["Embedding", "S/N"]].rename(columns={"S/N": "MBTI"})
-        dataset_TF = self.dataset[["Embedding", "T/F"]].rename(columns={"T/F": "MBTI"})
-        dataset_JP = self.dataset[["Embedding", "J/P"]].rename(columns={"J/P": "MBTI"})
-    
+        X = df.drop(columns=["MBTI"])
+        y = df["MBTI"]
+
+        X_train, X_eval, y_train, y_eval = train_test_split(
+            X, y, test_size=0.20, random_state=42, stratify=y
+        )
+        X_val, X_test, y_val, y_test = train_test_split(
+            X_eval, y_eval, test_size=0.50, random_state=42, stratify=y_eval
+        )
+
+        train_df = pd.concat([X_train, y_train], axis=1)
+        val_df = pd.concat([X_val, y_val], axis=1)
+        test_df = pd.concat([X_test, y_test], axis=1)
+
+        if self.balancear_flag:
+            train_df = self.balancear(train_df)
+
+        return train_df, test_df, val_df
+
+    def procesar_todos_ejes(self) -> None:
+        '''
+        Recorre cada eje cargado y lo divide/balancea guardando los resultados en atributos
+        especializados (train_EI, etc.).
+        Solo se ejecutará si en el constructor se indicó que se queria balancear
+        '''
         
-        def procesar_eje(df)-> tuple [pd.DataFrame,pd.DataFrame,pd.DataFrame]:
-            '''
-            Funcion interna que realiza la division train, test, eval segun el dataset pasado como párametro.
-
-            :param df: Datasets a dividir
-            :return: Los 3 datasets divididos, (Train, Test, Val)
-            '''
-
-
-            X = df.drop(columns=["MBTI"])
-            y = df["MBTI"]
-            
-            #80% para Train, 10% Validacion, 10% Test 
-            X_train, X_eval, y_train, y_eval = train_test_split(X, y, test_size=0.20, random_state=42, stratify=y)
-            
-            X_val, X_test, y_val, y_test = train_test_split(X_eval, y_eval, test_size=0.50, random_state=42, stratify=y_eval)
-            
-            train_df = pd.concat([X_train, y_train], axis=1)
-            val_df = pd.concat([X_val, y_val], axis=1)
-            test_df = pd.concat([X_test, y_test], axis=1)
-            
-            # Devolvemos el train balanceado, y los otros dos intactos (mundo real)
-            return train_df, test_df, val_df
-
-        # 3. Aplicamos el proceso a los 4 ejes de personalidad
-        self.train_EI, self.test_EI, self.val_EI = procesar_eje(dataset_EI)
-        self.train_SN, self.test_SN, self.val_SN = procesar_eje(dataset_SN)
-        self.train_TF, self.test_TF, self.val_TF = procesar_eje(dataset_TF)
-        self.train_JP, self.test_JP, self.val_JP = procesar_eje(dataset_JP)
-
-        if balancear:
-            self.train_EI = self.balancear(self.train_EI)
-            self.train_SN = self.balancear(self.train_SN)
-            self.train_TF = self.balancear(self.train_TF)
-            self.train_JP = self.balancear(self.train_JP)
+        for eje in ['E/I', 'S/N', 'T/F', 'J/P']:
+            df = self.datasets[eje].copy()
+            df = df[['Embedding', eje]].rename(columns={eje: 'MBTI'})
+            train_df, test_df, val_df = self.dividir_balancear_df(df)
+            setattr(self, f"train_{eje.replace('/', '')}", train_df)
+            setattr(self, f"test_{eje.replace('/', '')}", test_df)
+            setattr(self, f"val_{eje.replace('/', '')}", val_df)
 
     @abstractmethod
     def __str__(self):
         pass
 
 class BalanceadorSMOTE(Balanceador):
-    def __init__(self,nomCarpeta:str = "dataset9K", nombre_dataset:str = None):
-        super().__init__(nomCarpeta,nombre_dataset)
+    def __init__(self, nomCarpeta: str = "dataset9K", balancear: bool = True):
+        super().__init__(nomCarpeta, balancear=balancear)
         self.balanceador = SMOTE(random_state=42)
 
     def __str__(self):
         return "SMOTE"
 
 class BalanceadorBorderlineSMOTE(Balanceador):
-    def __init__(self,nomCarpeta:str = "dataset9K", nombre_dataset:str = None):
-        super().__init__(nomCarpeta,nombre_dataset)
+    def __init__(self, nomCarpeta: str = "dataset9K", balancear: bool = True):
+        super().__init__(nomCarpeta, balancear=balancear)
         self.balanceador = BorderlineSMOTE(random_state=42)
 
     def __str__(self):
         return "BorderlineSMOTE"
 
 class BalanceadorADASYN(Balanceador):
-    def __init__(self,nomCarpeta:str = "dataset9K", nombre_dataset:str = None):
-        super().__init__(nomCarpeta,nombre_dataset)
+    def __init__(self, nomCarpeta: str = "dataset9K", balancear: bool = True):
+        super().__init__(nomCarpeta, balancear=balancear)
         self.balanceador = ADASYN(random_state=42)
     
     def __str__(self):
         return "ADASYN"
 
 class BalanceadorENN(Balanceador):
-    def __init__(self,nomCarpeta:str = "dataset9K", nombre_dataset:str = None):
-        super().__init__(nomCarpeta,nombre_dataset)
+    def __init__(self, nomCarpeta: str = "dataset9K", balancear: bool = True):
+        super().__init__(nomCarpeta, balancear=balancear)
         self.balanceador = EditedNearestNeighbours()
     
     def __str__(self):
         return "EditedNearestNeighbours"
 
 class BalanceadorAKNN(Balanceador):
-    def __init__(self,nomCarpeta:str = "dataset9K", nombre_dataset:str = None):
-        super().__init__(nomCarpeta,nombre_dataset)
+    def __init__(self, nomCarpeta: str = "dataset9K", balancear: bool = True):
+        super().__init__(nomCarpeta, balancear=balancear)
         self.balanceador = AllKNN()
     
     def __str__(self):
         return "AllKNN"
+

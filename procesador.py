@@ -8,7 +8,7 @@ import torch
 
 #Esta clase se encarga de limpiar, tokenizar y realizar el embedding del dataset a partir de un modelo pre-entrenado
 class Preprocesador:
-    def __init__(self, nombre_modelo,max_lenght = 512, dispotivo='cuda'):
+    def __init__(self, nombre_modelo,max_lenght = 512, dispositivo='cuda'):
         '''
         Constructor del Preprocesador, que se encargará de realizar las tareas de limpieza, tokenizacion y embedding
 
@@ -22,7 +22,7 @@ class Preprocesador:
         self.tokenizer = AutoTokenizer.from_pretrained(nombre_modelo)
 
         print(f"[INFO] Cargando modelo: {nombre_modelo}")
-        self.modelo = AutoModel.from_pretrained(nombre_modelo).to(dispotivo)
+        self.modelo = AutoModel.from_pretrained(nombre_modelo).to(dispositivo)
         self.max_lenght = max_lenght
         self.modelo.eval()  # Establece el modelo en modo evaluación para evitar dropout y otros comportamientos de entrenamiento
 

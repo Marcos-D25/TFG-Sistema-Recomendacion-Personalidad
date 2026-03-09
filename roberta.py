@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 class FineTunnerRoberta:
     def __init__(self, modelo_base="FacebookAI/roberta-base", nom_carpeta="dataset9K", nom_archivo="MBTI.csv"):
         '''
-        Constructor de la clase encargada de realizar fine tunning al modelo de roberta deseado
+        Constructor de la clase encargada de realizar fine tunning al modelo de roberta deseado.
 
         :param modelo_base: Modelo de Roberta al que se desea aplicar el fine tunning
         :param nom_carpeta: Nombre de la carpeta donde se encuentra el dataset
@@ -48,13 +48,13 @@ class FineTunnerRoberta:
         self.train_dataset[dimension] = ds_train.map(tokenizar, batched=True)
         self.val_dataset[dimension] = ds_val.map(tokenizar, batched=True)
 
-    def entrenar_dimension(self, dimension="E/I"):
+    def entrenar_dimension(self, dimension="E/I",nomCarpeta="robertaFT"):
         '''
         Funcion que se encarga de entrenar una dimension concreta del dataset, creando un modelo especializado en esa dimension
 
         :param dimension: Dimension a entrenar (ej. E/I)
         '''
-        self.salida_modelo = f"./robertaFT/{dimension.replace('/', '-')}_{self.modelo_base.split('/')[-1]}"
+        self.salida_modelo = f"./{nomCarpeta}/{dimension.replace('/', '-')}_{self.modelo_base.split('/')[-1]}"
         
         print(f"[INFO] Iniciando Fine-Tuning BINARIO de {self.modelo_base} para la dimension {dimension}...")
         
@@ -92,7 +92,7 @@ class FineTunnerRoberta:
         trainer.save_model(self.salida_modelo)
         self.tokenizer.save_pretrained(self.salida_modelo)
     
-    def entrenar_modelo(self):
+    def entrenar_modelo(self, nomCarpeta:str):
         '''
         Funcion que sirve para entrenar a Roberta en todas las dimensiones que nos concierne
         '''
@@ -109,13 +109,19 @@ class FineTunnerRoberta:
         for dimension in dimensiones:
             print(f"\n[INFO] Entrenando dimensión {dimension}...")
             self.preparar_datos(df_train, df_val, columna_texto="posts", dimension=dimension)
-            self.entrenar_dimension(dimension=dimension)
+            self.entrenar_dimension(dimension=dimension, nomCarpeta=nomCarpeta)
         
         print(f"\n[EXITO] Entrenamiento completado en todas las dimensiones")
         
 def main():
     entrenador = FineTunnerRoberta(nom_archivo="MBTI_limpio.csv")
-    entrenador.entrenar_modelo()
+    entrenador.entrenar_modelo(nomCarpeta="robertaFT")
+
+    entrenador = FineTunnerRoberta(nom_archivo="MBTI_limpio.csv", modelo_base="FacebookAI/xlm-roberta-base")
+    entrenador.entrenar_modelo(nomCarpeta="XMLBrobertaFT")
+
+    entrenador = FineTunnerRoberta(nom_archivo="MBTI_limpio.csv", modelo_base="FacebookAI/xlm-roberta-large")
+    entrenador.entrenar_modelo(nomCarpeta="XMLLrobertaFT")
 
 if __name__ == "__main__":
     main()
