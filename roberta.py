@@ -114,14 +114,15 @@ class FineTunnerRoberta:
         print(f"\n[EXITO] Entrenamiento completado en todas las dimensiones")
         
 def main():
+    """
     entrenador = FineTunnerRoberta(nom_archivo="MBTI_limpio.csv")
     entrenador.entrenar_modelo(nomCarpeta="robertaFT")
-
+    """
     entrenador = FineTunnerRoberta(nom_archivo="MBTI_limpio.csv", modelo_base="FacebookAI/xlm-roberta-base")
-    entrenador.entrenar_modelo(nomCarpeta="XMLBrobertaFT")
+    entrenador.entrenar_modelo(nomCarpeta="XLMBrobertaFT")
 
     entrenador = FineTunnerRoberta(nom_archivo="MBTI_limpio.csv", modelo_base="FacebookAI/xlm-roberta-large")
-    entrenador.entrenar_modelo(nomCarpeta="XMLLrobertaFT")
+    entrenador.entrenar_modelo(nomCarpeta="XLMLrobertaFT")
 
 if __name__ == "__main__":
     main()

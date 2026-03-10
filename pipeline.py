@@ -233,19 +233,20 @@ def ejecutar_pipelines(pipelines:list[Pipeline], algoritmo:str=None, nombre_arch
         pipeline.ejecutar_pipeline_entreno(algotitmo=algoritmo, nombre_archivo=nombre_archivo,parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
 
 if __name__ == "__main__":
-    '''
+    
     #EJECUCION PIPELINE ROBERTA BASE
     print("="*50)
     print("[INICIO] Ejecución pipeline con Roberta Base ...")
     nombre_modelo = "FacebookAI/roberta-base"
-    pipeline_modelo_entreno(nombre_modelo, preprocesar=False, carpeta_origen="dataset9K", modelos=["FacebookAI/roberta-base"], carpeta_dest="datasetRB")
+    pipeline_modelo_entreno(nombre_modelo, preprocesar=True, carpeta_origen="dataset9K", modelos=["FacebookAI/roberta-base"], carpeta_dest="datasetRB")
     print("[FIN] Ejecución pipeline con Roberta Base ...")
     print("="*50)
+    
     #EJECUCION PIPELINE XLM-ROBERTA-BASE
     print("="*50)
     print("[INICIO] Ejecución pipeline con XLM Roberta Base ...")
     nombre_modelo = "FacebookAI/xlm-roberta-base"
-    pipeline_modelo_entreno(nombre_modelo,preprocesar=True)
+    pipeline_modelo_entreno(nombre_modelo,preprocesar=True, carpeta_origen="dataset9K", modelos=["FacebookAI/xlm-roberta-base"], carpeta_dest="datasetXLMRB")
     print("[FIN] Ejecución pipeline con XLM Roberta Base ...")
     print("="*50)
 
@@ -253,11 +254,11 @@ if __name__ == "__main__":
     print("="*50)
     print("[INICIO] Ejecución pipeline con XLM Roberta Large ...")
     nombre_modelo = "FacebookAI/xlm-roberta-large"
-    pipeline_modelo_entreno(nombre_modelo,preprocesar=True)
+    pipeline_modelo_entreno(nombre_modelo,preprocesar=True, carpeta_origen="dataset9K", modelos=["FacebookAI/xlm-roberta-large"], carpeta_dest="datasetXLMRL")
     print("[FIN] Ejecución pipeline con XLM Roberta Large ...")
     print("="*50)
-    '''
-    #EJECUCION PIPELINE ROBERTA FT
+    
+    #EJECUCION PIPELINE ROBERTA BASE FT
     print("="*50)
     print("[INICIO] Ejecución pipeline con Roberta Base FT...")
     modelos = ["./robertaFT/E-I_roberta-base","./robertaFT/J-P_roberta-base","./robertaFT/S-N_roberta-base","./robertaFT/T-F_roberta-base"]
@@ -265,3 +266,5 @@ if __name__ == "__main__":
     print("[FIN] Ejecución pipeline con Roberta Base ...")
     print("="*50)
     
+    '''
+    '''
