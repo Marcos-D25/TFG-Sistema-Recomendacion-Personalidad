@@ -3,14 +3,13 @@ import pandas as pd
 import numpy as np
 import joblib
 from openpyxl import load_workbook
-import optuna
 from sklearn.metrics import classification_report, confusion_matrix, precision_recall_fscore_support, accuracy_score
 
 from balanceador import Balanceador, BalanceadorSMOTE, BalanceadorBorderlineSMOTE, BalanceadorADASYN, BalanceadorENN, BalanceadorAKNN
 from procesador import Preprocesador
 from clasificador import Clasificador, XGB, LR, MLPC,LSVC, DTC, KNC
 
-class Pipeline:
+class Pipeline_Entreno:
     def __init__(self, nombre_modelo, balanceador:Balanceador=None):
         self.nombre_modelo = nombre_modelo
         self.nombre_balanceador = balanceador.__str__() if balanceador else None
@@ -160,7 +159,6 @@ class Pipeline:
 
         print("[EJECUCION] Fin pipeline completo ...")
 
-#Funcion que sirve para sacar las metricas de entrenamiento para un modelo de embedding concreto
 def pipeline_modelo_entreno(modelo, preprocesar:bool = False,balancear=True, parametros:dict=None, buscar_hiperparametros:bool=False, carpeta_origen:str="dataset9K", modelos:list[str]=["FacebookAI/roberta-base"], carpeta_dest="datasetRB") -> None:
     '''
     Funcion que lleva acabo la ejecucion completa del proceso de entrenamiento. Cuenta con las fases de Preprocesamiento, Balanceo y entrenamiento del Clasificador
@@ -179,7 +177,7 @@ def pipeline_modelo_entreno(modelo, preprocesar:bool = False,balancear=True, par
     if preprocesar:
         dimensiones=["EI","JP","SN","TF"]
         if len(modelos) == 1:
-            print(f"[EJECUCION] Un único modelo detectado. Procesando una sola vez...")
+            print("[EJECUCION] Un único modelo detectado. Procesando una sola vez...")
             procesador = Preprocesador(modelos[0])
             procesador.cargar_dataset(nombreCarpeta=carpeta_origen)
             procesador.procesar_dataset(carpeta_dest=carpeta_dest, nom_archivo=f"dataset{dimensiones[0]}")
@@ -205,21 +203,20 @@ def pipeline_modelo_entreno(modelo, preprocesar:bool = False,balancear=True, par
     balENN = BalanceadorENN(carpeta_dest,balancear=balancear)
     balAKNN = BalanceadorAKNN(carpeta_dest,balancear=balancear)
     
-    pipelineSMOTE = Pipeline(nombre_modelo=modelo, balanceador=balSMOTE)
-    pipelineBORSMOTE = Pipeline(nombre_modelo=modelo, balanceador=balBORSMOTE)
-    pipelineADASYN = Pipeline(nombre_modelo=modelo, balanceador=balADASYN)
-    pipelineENN = Pipeline(nombre_modelo=modelo, balanceador=balENN)
-    pipelineAKNN = Pipeline(nombre_modelo=modelo, balanceador=balAKNN)
+    pipelineSMOTE = Pipeline_Entreno(nombre_modelo=modelo, balanceador=balSMOTE)
+    pipelineBORSMOTE = Pipeline_Entreno(nombre_modelo=modelo, balanceador=balBORSMOTE)
+    pipelineADASYN = Pipeline_Entreno(nombre_modelo=modelo, balanceador=balADASYN)
+    pipelineENN = Pipeline_Entreno(nombre_modelo=modelo, balanceador=balENN)
+    pipelineAKNN = Pipeline_Entreno(nombre_modelo=modelo, balanceador=balAKNN)
 
-    #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="RL", nombre_archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx", parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
-    #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="XGBoost", nombre_archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx", parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
-    #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="LinearSVC", nombre_archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx", parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
+    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="RL", nombre_archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx", parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
+    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="XGBoost", nombre_archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx", parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
+    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="LinearSVC", nombre_archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx", parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
     ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="MLP", nombre_archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx", parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
-    #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="KNC", nombre_archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx", parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
-    #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="DTC", nombre_archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx", parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
-    
+    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="KNC", nombre_archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx", parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
+    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="DTC", nombre_archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx", parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)   
 
-def ejecutar_pipelines(pipelines:list[Pipeline], algoritmo:str=None, nombre_archivo="Resultados.xlsx", parametros:dict=None, buscar_hiperparametros:bool=False):
+def ejecutar_pipelines(pipelines:list[Pipeline_Entreno], algoritmo:str=None, nombre_archivo="Resultados.xlsx", parametros:dict=None, buscar_hiperparametros:bool=False):
     '''
     Funcion que ejecuta completamente cada Pipeline de la lista pipelines.
 
@@ -234,8 +231,7 @@ def ejecutar_pipelines(pipelines:list[Pipeline], algoritmo:str=None, nombre_arch
     for pipeline in pipelines:
         pipeline.ejecutar_pipeline_entreno(algotitmo=algoritmo, nombre_archivo=nombre_archivo,parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
 
-if __name__ == "__main__":
-    '''
+def entreno_total():
     #EJECUCION PIPELINE ROBERTA BASE
     print("="*50)
     print("[INICIO] Ejecución pipeline con Roberta Base ...")
@@ -269,7 +265,7 @@ if __name__ == "__main__":
     pipeline_modelo_entreno("XLM-Roberta-Base-FT", preprocesar=False, parametros=None, buscar_hiperparametros=False, carpeta_origen="dataset9K", modelos=modelos, carpeta_dest="datasetXLMRBFT")
     print("[FIN] Ejecución pipeline con XLM Roberta Base ...")
     print("="*50)
-    '''
+    
     #EJECUCION PIPELINE ROBERTA BASE FT
     print("="*50)
     print("[INICIO] Ejecución pipeline con Roberta Base FT...")
@@ -277,3 +273,66 @@ if __name__ == "__main__":
     pipeline_modelo_entreno("Roberta-Base-FT", preprocesar=False, parametros=None, buscar_hiperparametros=True, carpeta_origen="dataset9K", modelos=modelos, carpeta_dest="datasetRBFT")
     print("[FIN] Ejecución pipeline con Roberta Base ...")
     print("="*50)
+
+class Pipeline:
+    def __init__(self,texto:str,lista_modelos:list[str], dispositivo:str = "cuda"):
+        '''
+        Constructor de la clase Pipeline
+
+        :param texto: Texto al cual se le quiere averiguar los rasgos de personalidad
+        :param lista_modelos: Lista que contiene las rutas 4 respectivas a cada clasificador de cada dimension. Lanza un error si la lista no cuenta con 4 elementos. Tambien lanzará un error si los 4 modelos no fueron entrenados con el mismo encoder
+        :param dispositivo: Dispositivo donde se ejecutaran todos los calculos. Predefinido en cuda
+
+        :return: None
+        '''
+        if len(texto) == 0 or texto.isspace():
+            raise Exception("Se ha pasado un texto vacio en por parametro")
+        if len(lista_modelos) != 4:
+            raise Exception("La lista de rutas es erronea")
+        encoder = lista_modelos[0].split("\\")[-1][4:]
+
+        self.texto = texto
+        self.modelos = {}
+        self.prediccion = {}
+        for ruta in lista_modelos:
+            _, modelo = ruta.split("\\")
+            if modelo[4:] != encoder:
+                raise Exception("Los encoder son distintos, no se puede proceder")
+            dimension = modelo[:3]
+            self.modelos[dimension] = joblib.load(ruta)
+
+        procesador = Preprocesador(nombre_modelo=encoder)
+        self.embedding = procesador.procesar_texto(texto)
+
+    def predecir_dimension(self,dimension:str) -> int:
+        '''
+        Funcion que sirve para predecir una simple dimension con el modelo correspondiente
+
+        :param dimension: Dimension que se quiere predecir del texto inicial
+        :return: Devolvera 0 o 1, indicando a que clase de la dimension pertenece
+        '''
+        if dimension not in self.modelos.keys():
+            raise Exception(f"La dimension {dimension} no se encuentra en los modelos actuales")
+        
+        prediccion = self.modelos[dimension].predict(self.embedding)
+
+        return prediccion
+    
+    def generar_predicciones(self) -> dict:
+        '''
+        Funcion que genera la prediccion de cada dimension del texto.
+
+        :return: Diccionario que contiene las predicciones para cada modelo
+        '''
+        prediccion = {}
+        for dimension in self.modelos.keys():
+            prediccion[dimension] = self.predecir_dimension(dimension)
+        
+        self.prediccion = prediccion
+
+        return prediccion
+        
+
+
+if __name__ == "__main__":
+    pass

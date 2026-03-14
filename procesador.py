@@ -182,13 +182,18 @@ class Preprocesador:
         '''
         Funcion que sirve para procesar un simple texto. En esta funcion se limpiará, tokenizará y generará el embedding correspondiente
 
-        :param texto:Texto a procesar
+        :param texto: Texto a procesar
         :return: Vector ndarray con el embedding 
         '''
+        print("[INFO] Realizando el embedding del texto...")
 
         texto_limpio = self.limpiar_texto(texto)
         texto_tokenizado = self.tokenizar_texto(texto_limpio)
-        return self.extraer_embeddings(texto_tokenizado)
+        res = self.extraer_embeddings(texto_tokenizado)
+
+        print("[INFO] Embedding generado")
+        return res
+
 
     def guardar_dataset_parquet(self, dataset, carpeta_dest, nom_archivo):
         '''
