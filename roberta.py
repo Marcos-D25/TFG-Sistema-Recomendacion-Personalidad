@@ -36,8 +36,13 @@ class FineTunnerRoberta:
         :param columna_texto: Nombre de la columna donde contiene los posts/textos a procesar
         :param dimension: Dimension correspondiente al entreno de este modelo (ej. E/I)
         '''
-        df_train_sub = df_train[[columna_texto, dimension]].rename(columns={dimension: 'label'})
-        df_val_sub = df_val[[columna_texto, dimension]].rename(columns={dimension: 'label'})
+        df_train_sub = df_train[[columna_texto, dimension]].dropna(subset=[columna_texto])
+        df_train_sub[columna_texto] = df_train_sub[columna_texto].astype(str)
+        df_train_sub = df_train_sub.rename(columns={dimension: 'label'})
+        
+        df_val_sub = df_val[[columna_texto, dimension]].dropna(subset=[columna_texto])
+        df_val_sub[columna_texto] = df_val_sub[columna_texto].astype(str)
+        df_val_sub = df_val_sub.rename(columns={dimension: 'label'})
         
         ds_train = Dataset.from_pandas(df_train_sub)
         ds_val = Dataset.from_pandas(df_val_sub)
@@ -114,15 +119,15 @@ class FineTunnerRoberta:
         print(f"\n[EXITO] Entrenamiento completado en todas las dimensiones")
         
 def main():
-    """
-    entrenador = FineTunnerRoberta(nom_archivo="MBTI_limpio.csv")
-    entrenador.entrenar_modelo(nomCarpeta="robertaFT")
+    
+    entrenador = FineTunnerRoberta(nom_carpeta="dataset100K",nom_archivo="MBTI_limpio.csv")
+    entrenador.entrenar_modelo(nomCarpeta="robertaFT100K")
     """
     entrenador = FineTunnerRoberta(nom_archivo="MBTI_limpio.csv", modelo_base="FacebookAI/xlm-roberta-base")
     entrenador.entrenar_modelo(nomCarpeta="XLMBrobertaFT")
 
     entrenador = FineTunnerRoberta(nom_archivo="MBTI_limpio.csv", modelo_base="FacebookAI/xlm-roberta-large")
     entrenador.entrenar_modelo(nomCarpeta="XLMLrobertaFT")
-
+    """
 if __name__ == "__main__":
     main()

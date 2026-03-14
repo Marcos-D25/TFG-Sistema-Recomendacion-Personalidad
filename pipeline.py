@@ -275,12 +275,13 @@ def entreno_total():
     print("="*50)
 
 class Pipeline:
-    def __init__(self,texto:str,lista_modelos:list[str], dispositivo:str = "cuda"):
+    def __init__(self,texto:str,lista_modelos:list[str], lista_encoder:list[str], dispositivo:str = "cuda"):
         '''
         Constructor de la clase Pipeline
 
         :param texto: Texto al cual se le quiere averiguar los rasgos de personalidad
         :param lista_modelos: Lista que contiene las rutas 4 respectivas a cada clasificador de cada dimension. Lanza un error si la lista no cuenta con 4 elementos. Tambien lanzará un error si los 4 modelos no fueron entrenados con el mismo encoder
+        :param lista_encoder: Lista que contiene cada encoder especializado para cada dimension. Si el encoder es compartido por todas las dimensiones, entonces solo haria falta indicarlo 1 vez
         :param dispositivo: Dispositivo donde se ejecutaran todos los calculos. Predefinido en cuda
 
         :return: None
@@ -291,8 +292,13 @@ class Pipeline:
             raise Exception("La lista de rutas es erronea")
         encoder = lista_modelos[0].split("\\")[-1][4:]
 
+        if len(lista_encoder) == 1:
+            lista_encoder = lista_encoder*4
+        
+
         self.texto = texto
         self.modelos = {}
+        self.embedding = {}
         self.prediccion = {}
         for ruta in lista_modelos:
             _, modelo = ruta.split("\\")
@@ -301,8 +307,8 @@ class Pipeline:
             dimension = modelo[:3]
             self.modelos[dimension] = joblib.load(ruta)
 
-        procesador = Preprocesador(nombre_modelo=encoder)
-        self.embedding = procesador.procesar_texto(texto)
+        for dimension, encoder in zip(["E-I", "J-P", "S-N", "T-F"], lista_encoder):
+            self.embedding[dimension] = Preprocesador(nombre_modelo=encoder, dispositivo=dispositivo).procesar_texto(texto)
 
     def predecir_dimension(self,dimension:str) -> int:
         '''
@@ -314,9 +320,9 @@ class Pipeline:
         if dimension not in self.modelos.keys():
             raise Exception(f"La dimension {dimension} no se encuentra en los modelos actuales")
         
-        prediccion = self.modelos[dimension].predict(self.embedding)
-
-        return prediccion
+        probabilidades = self.modelos[dimension].predict_proba(self.embedding[dimension].reshape(1,-1))
+        print(f"Probabilidades para {dimension}: {probabilidades}")
+        return 0
     
     def generar_predicciones(self) -> dict:
         '''
@@ -335,4 +341,11 @@ class Pipeline:
 
 
 if __name__ == "__main__":
-    pass
+    texto = '''
+'''    
+
+    lista_modelos = ["modelos_MLPC\\E-I_Roberta-Base-FT", "modelos_XGB\\S-N_Roberta-Base-FT", "modelos_XGB\\T-F_Roberta-Base-FT", "modelos_MLPC\\J-P_Roberta-Base-FT"]
+    lista_encoders = ["robertaFT\\E-I_roberta-base","robertaFT\\J-P_roberta-base","robertaFT\\S-N_roberta-base","robertaFT\\T-F_roberta-base"]
+    predictor = Pipeline(texto, lista_modelos, lista_encoders)
+
+    predictor.generar_predicciones()

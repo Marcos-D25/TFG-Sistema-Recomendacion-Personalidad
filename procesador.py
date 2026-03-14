@@ -228,15 +228,17 @@ def ejecutar_preprocesador(preprocesador:Preprocesador):
 
 
 def main():
-    '''
+    
     print("[EJECUCION] Ejecutando ROBERTA BASE...]")
     robertaBase = Preprocesador("FacebookAI/roberta-base")
-    robertaBase.cargar_dataset()
+    robertaBase.cargar_dataset(nombreCarpeta="dataset100K")
     robertaBase.reformular_clases()
     robertaBase.dataset["posts"] = robertaBase.dataset["posts"].apply(robertaBase.limpiar_texto)
 
-    robertaBase.guardar_dataset_csv(robertaBase.dataset, os.path.join("dataset9K", "MBTI_limpio.csv"))
+    robertaBase.guardar_dataset_csv(robertaBase.dataset, os.path.join("dataset100K", "MBTI_limpio.csv"))
+    
     print("[EJECUCION] ROBERTA BASE guardado]\n\n")
+    '''
     print("[EJECUCION] Ejecutando XML ROBERTA BASE...]")
     xml_robertaBase = Preprocesador(os.path.join("datasets","MBTI_sinProcesar.csv"),"FacebookAI/xlm-roberta-base")
     ejecutar_preprocesador(xml_robertaBase)
@@ -246,7 +248,7 @@ def main():
     xml_robertaLarge = Preprocesador(os.path.join("datasets","MBTI_sinProcesar.csv"),"FacebookAI/xlm-roberta-large")
     ejecutar_preprocesador(xml_robertaLarge)
     print("[EJECUCION] XML ROBERTA LARGE guardado]\n\n")
-    '''
+    
 
     print("[EJECUCION] Ejecutando ROBERTA BASE FT...")
     robertaFTEI = Preprocesador("./robertaFT/E-I_roberta-base")
@@ -266,6 +268,7 @@ def main():
     robertaFTTF.procesar_dataset(carpeta_dest="datasetRBFT", nom_archivo="datasetTF")
 
     print("[EJECUCION] Fin ROBERTA BASE FT...")
+    '''
 
 if __name__ == "__main__":
     main()
