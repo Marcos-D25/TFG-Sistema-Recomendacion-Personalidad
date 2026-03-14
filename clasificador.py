@@ -113,35 +113,44 @@ class Clasificador(ABC):
 
 class XGB(Clasificador):
     def __init__(self, balanceador, 
-                 parametros = {'n_estimators': 352, 'max_depth': 8, 
-                               'learning_rate': 0.041694500859353036, 'subsample': 0.6688508428769014, 
-                               'colsample_bytree': 0.6246885857257476, 'gamma': 0.6844100651211652, 
-                               'tree_method': 'hist',  
-                                'device': 'cuda',       
-                                'random_state': 42,
-                                'n_jobs': 1
-                                }
+                 parametros = {'n_estimators': 650, 'max_depth': 9, 'learning_rate': 0.010288662924278852,
+                                'min_child_weight': 10, 'subsample': 0.829092618497977, 'colsample_bytree': 0.5881832414574534, 
+                                'gamma': 4.140467354786688, 'reg_alpha': 0.054217127083094424, 'reg_lambda': 0.13120231425895848, 
+                                'grow_policy': 'depthwise', 'multi_strategy': 'multi_output_tree', 'objective': 'binary:hinge',
+                                  'tree_method': 'hist', 
+                                  'device': 'cuda', 
+                                  'random_state': 42, 
+                                  'n_jobs': 1, 
+                                  'verbosity': 0}
                                 ):
         super().__init__(balanceador, parametros)
     
     def busqueda_hiperparametros(self):
         configuracion = {
+            'objective': 'binary:hinge',
             'tree_method': 'hist',  
             'device': 'cuda',       
             'random_state': 42,
-            'n_jobs': 1
+            'n_jobs': 1,
+            'verbosity':0
         }
 
         def objective(trial):
             
             hiperparametros = {
-                'n_estimators': trial.suggest_int('n_estimators', 100, 800),#Eligira un numero entre 100 y 800
+                'n_estimators': trial.suggest_int('n_estimators', 100, 800, step=50),#Eligira un numero entre 100 y 800
                 'max_depth': trial.suggest_int('max_depth', 3, 9),
                 'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.3, log=True),
-                
+                'min_child_weight': trial.suggest_int('min_child_weight', 1,10),
+
                 'subsample': trial.suggest_float('subsample', 0.6, 1.0),
                 'colsample_bytree': trial.suggest_float('colsample_bytree', 0.5, 1.0),
                 'gamma': trial.suggest_float('gamma', 0.0, 5.0),
+
+                'reg_alpha': trial.suggest_float('reg_alpha', 1e-3, 10.0, log=True), 
+                'reg_lambda': trial.suggest_float('reg_lambda', 1e-3, 10.0, log=True),
+                'grow_policy': trial.suggest_categorical('grow_policy', ['depthwise','lossguide']),
+                'multi_strategy': trial.suggest_categorical('multi_strategy', ['one_output_per_tree','multi_output_tree']),
             } 
 
             parametros = hiperparametros | configuracion
@@ -149,15 +158,15 @@ class XGB(Clasificador):
             # Instanciamos el modelo con los parámetros sugeridos por Optuna
             modelo = XGBClassifier(**parametros)
 
-            X_train, y_train = self.datasetEnterno["E/I"]
+            X_train, y_train = self.datasetEnterno["S-N"] #Es la clase con peor ratio de todas
 
-            score = cross_val_score(modelo, X_train, y_train, cv=3, scoring="f1_macro", n_jobs=1)
+            score = cross_val_score(modelo, X_train, y_train, cv=4, scoring="f1_macro", n_jobs=1)
             return score.mean()
 
         print("[XGBoost][EJECUCION] Iniciando Estudio Optuna...")
         estudio = optuna.create_study(direction="maximize")
         
-        estudio.optimize(objective, n_trials=20, gc_after_trial=True, n_jobs=1)
+        estudio.optimize(objective, n_trials=25, gc_after_trial=True, n_jobs=4)
 
         return estudio.best_params | configuracion
        
@@ -205,9 +214,9 @@ class LSVC(Clasificador):
 
             # Instanciamos el modelo con los parámetros sugeridos por Optuna
             modelo = LinearSVC(**parametros)
-            X_train, y_train = self.datasetEnterno["E/I"]
+            X_train, y_train = self.datasetEnterno["S-N"]
             
-            score = cross_val_score(modelo, X_train, y_train, cv=3, scoring="f1_macro", n_jobs=-1)
+            score = cross_val_score(modelo, X_train, y_train, cv=5, scoring="f1_macro", n_jobs=-1)
             return score.mean()
 
         print("[LinearSVC][EJECUCION] Iniciando Estudio Optuna...")
@@ -261,9 +270,9 @@ class LR(Clasificador):
 
             # Instanciamos el modelo con los parámetros sugeridos por Optuna
             modelo = LogisticRegression(**parametros)
-            X_train, y_train = self.datasetEnterno["E/I"]
+            X_train, y_train = self.datasetEnterno["S-N"]
             
-            score = cross_val_score(modelo, X_train, y_train, cv=3, scoring="f1_macro", n_jobs=-1)
+            score = cross_val_score(modelo, X_train, y_train, cv=5, scoring="f1_macro", n_jobs=-1)
             return score.mean()
 
         print("[LogisticRegression][EJECUCION] Iniciando Estudio Optuna...")
@@ -313,9 +322,9 @@ class KNC(Clasificador):
 
             # Instanciamos el modelo con los parámetros sugeridos por Optuna
             modelo = KNeighborsClassifier(**parametros)
-            X_train, y_train = self.datasetEnterno["E/I"]
+            X_train, y_train = self.datasetEnterno["S-N"]
             
-            score = cross_val_score(modelo, X_train, y_train, cv=3, scoring="f1_macro", n_jobs=-1)
+            score = cross_val_score(modelo, X_train, y_train, cv=5, scoring="f1_macro", n_jobs=-1)
             return score.mean()
 
         print("[KNeighborsClassifier][EJECUCION] Iniciando Estudio Optuna...")
@@ -366,9 +375,9 @@ class DTC(Clasificador):
 
             # Instanciamos el modelo con los parámetros sugeridos por Optuna
             modelo = DecisionTreeClassifier(**parametros)
-            X_train, y_train = self.datasetEnterno["E/I"]
+            X_train, y_train = self.datasetEnterno["S-N"]
             
-            score = cross_val_score(modelo, X_train, y_train, cv=3, scoring="f1_macro", n_jobs=-1)
+            score = cross_val_score(modelo, X_train, y_train, cv=5, scoring="f1_macro", n_jobs=-1)
             return score.mean()
 
         print("[DecisionTreeClassifier][EJECUCION] Iniciando Estudio Optuna...")
@@ -404,33 +413,34 @@ class MLPC(Clasificador):
     def busqueda_hiperparametros(self):
         configuracion = {
            'early_stopping': True,
-           'max_iter':6000,
+           'max_iter':15000,
            'random_state':42 
         }
 
         def objective(trial):
             
             hiperparametros = {
-                "hidden_layer_sizes" : trial.suggest_categorical("hidden_layer_sizes", [(256,256,128), (128,128,64), (256,128,64)]),
+                "hidden_layer_sizes" : trial.suggest_categorical("hidden_layer_sizes", [(256,128,64), (256,128), (256), (512,), (512,256)]),
                 "activation" : trial.suggest_categorical("activation", ['logistic', 'tanh', 'relu']),
+                "alpha": trial.suggest_float("alpha", 1e-4, 1e-1, log=True),
                 "solver" : trial.suggest_categorical("solver", ['sgd', 'adam']),
-                "learning_rate" : trial.suggest_categorical("learning_rate", ['constant', 'invscaling']),
-                "learning_rate_init" : trial.suggest_categorical("learning_rate_init", [0.001, 0.0005]),
+                "learning_rate" : trial.suggest_categorical("learning_rate", ['constant', 'invscaling', 'adaptive']),
+                "learning_rate_init" : trial.suggest_categorical("learning_rate_init", [1e-3, 1e-5]),
             } 
 
             parametros = hiperparametros | configuracion
 
             # Instanciamos el modelo con los parámetros sugeridos por Optuna
             modelo = MLPClassifier(**parametros)
-            X_train, y_train = self.datasetEnterno["E/I"]
+            X_train, y_train = self.datasetEnterno["S-N"]
             
-            score = cross_val_score(modelo, X_train, y_train, cv=3, scoring="f1_macro", n_jobs=-1)
+            score = cross_val_score(modelo, X_train, y_train, cv=5, scoring="f1_macro", n_jobs=-1)
             return score.mean()
 
         print("[MLPClassifier][EJECUCION] Iniciando Estudio Optuna...")
         estudio = optuna.create_study(direction="maximize")
         
-        estudio.optimize(objective, n_trials=20, gc_after_trial=True, n_jobs=-1)
+        estudio.optimize(objective, n_trials=25, gc_after_trial=True, n_jobs=-1)
 
         return estudio.best_params | configuracion
     

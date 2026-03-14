@@ -28,8 +28,10 @@ class Pipeline:
         '''
 
         if buscar_hiper:
+            print("[INFO] Buscando hiperparametros para el modelo...")
             parametros = self.clasificador.busqueda_hiperparametros()
         elif parametros is None: 
+            print("[INFO] Seleccionando hiperparametros por defecto para el modelo...")
             parametros = self.clasificador.getParametros()
         
         self.clasificador.entrenar_modelo()
@@ -209,12 +211,12 @@ def pipeline_modelo_entreno(modelo, preprocesar:bool = False,balancear=True, par
     pipelineENN = Pipeline(nombre_modelo=modelo, balanceador=balENN)
     pipelineAKNN = Pipeline(nombre_modelo=modelo, balanceador=balAKNN)
 
-    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="RL", nombre_archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx", parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
-    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="XGBoost", nombre_archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx", parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
-    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="LinearSVC", nombre_archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx", parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
+    #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="RL", nombre_archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx", parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
+    #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="XGBoost", nombre_archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx", parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
+    #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="LinearSVC", nombre_archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx", parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
     ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="MLP", nombre_archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx", parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
-    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="KNC", nombre_archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx", parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
-    ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="DTC", nombre_archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx", parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
+    #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="KNC", nombre_archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx", parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
+    #ejecutar_pipelines([pipelineSMOTE, pipelineBORSMOTE, pipelineADASYN, pipelineENN, pipelineAKNN], algoritmo="DTC", nombre_archivo=f"Resultados_{modelo.replace('/', '_')}.xlsx", parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
     
 
 def ejecutar_pipelines(pipelines:list[Pipeline], algoritmo:str=None, nombre_archivo="Resultados.xlsx", parametros:dict=None, buscar_hiperparametros:bool=False):
@@ -233,7 +235,7 @@ def ejecutar_pipelines(pipelines:list[Pipeline], algoritmo:str=None, nombre_arch
         pipeline.ejecutar_pipeline_entreno(algotitmo=algoritmo, nombre_archivo=nombre_archivo,parametros=parametros, buscar_hiperparametros=buscar_hiperparametros)
 
 if __name__ == "__main__":
-    
+    '''
     #EJECUCION PIPELINE ROBERTA BASE
     print("="*50)
     print("[INICIO] Ejecución pipeline con Roberta Base ...")
@@ -258,13 +260,20 @@ if __name__ == "__main__":
     print("[FIN] Ejecución pipeline con XLM Roberta Large ...")
     print("="*50)
     
+    
+    
+    #EJECUCION PIPELINE XLM ROBERTA BASE FT
+    print("="*50)
+    print("[INICIO] Ejecución pipeline con XLM Roberta Base FT...")
+    modelos = ["./XLMBrobertaFT/E-I_xlm-roberta-base","./XLMBrobertaFT/J-P_xlm-roberta-base","./XLMBrobertaFT/S-N_xlm-roberta-base","./XLMBrobertaFT/T-F_xlm-roberta-base"]
+    pipeline_modelo_entreno("XLM-Roberta-Base-FT", preprocesar=False, parametros=None, buscar_hiperparametros=False, carpeta_origen="dataset9K", modelos=modelos, carpeta_dest="datasetXLMRBFT")
+    print("[FIN] Ejecución pipeline con XLM Roberta Base ...")
+    print("="*50)
+    '''
     #EJECUCION PIPELINE ROBERTA BASE FT
     print("="*50)
     print("[INICIO] Ejecución pipeline con Roberta Base FT...")
     modelos = ["./robertaFT/E-I_roberta-base","./robertaFT/J-P_roberta-base","./robertaFT/S-N_roberta-base","./robertaFT/T-F_roberta-base"]
-    pipeline_modelo_entreno("Roberta-Base-FT", preprocesar=False, parametros=None, buscar_hiperparametros=False, carpeta_origen="dataset9K", modelos=modelos, carpeta_dest="datasetRBFT")
+    pipeline_modelo_entreno("Roberta-Base-FT", preprocesar=False, parametros=None, buscar_hiperparametros=True, carpeta_origen="dataset9K", modelos=modelos, carpeta_dest="datasetRBFT")
     print("[FIN] Ejecución pipeline con Roberta Base ...")
     print("="*50)
-    
-    '''
-    '''

@@ -67,12 +67,12 @@ class FineTunnerRoberta:
         training_args = TrainingArguments(
             output_dir=self.salida_modelo,
             eval_strategy="epoch",
-            #save_strategy="epoch", #Guardamos "instancias" del modelo cada cierto tiempo, se pueden eliminar una vez termina el entrenamiento
+            save_strategy="epoch", #Guardamos "instancias" del modelo cada cierto tiempo, se pueden eliminar una vez termina el entrenamiento
             learning_rate=2e-5, #Uso de learning rates bajos para no descontrolar demasiado los pesos
 
-            per_device_train_batch_size=16, 
-            per_device_eval_batch_size=16,  
-            dataloader_num_workers=2,  #Indica el numero de nucleos de la cpu que alimenta a la grafica     
+            per_device_train_batch_size=8, 
+            per_device_eval_batch_size=8,  
+            dataloader_num_workers=4,  #Indica el numero de nucleos de la cpu que alimenta a la grafica     
             num_train_epochs=3, #Incrementar el numero aumenta el riesgo de overfitting
             weight_decay=0.01,
             fp16=True,
