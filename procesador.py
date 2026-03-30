@@ -226,7 +226,6 @@ def ejecutar_preprocesador(preprocesador:Preprocesador):
 
     print("[EJECUCION] Fin preprocesador ...]")
 
-
 def main():
     
     print("[EJECUCION] Ejecutando ROBERTA BASE...]")
