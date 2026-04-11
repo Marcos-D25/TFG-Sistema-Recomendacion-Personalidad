@@ -1,7 +1,107 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
 import os
+
+def recuperar_f1_scores(ruta_excel):
+    """
+    Recupera los valores de F1-Score de un archivo Excel con múltiples pestañas.
+    
+    Args:
+        ruta_excel (str): Ruta al archivo Excel.
+    
+    Returns:
+        dict: Diccionario anidado con la estructura {nombre_pestaña: {modelo_dimension: media_f1}}
+    """
+    xls = pd.ExcelFile(ruta_excel)
+    resultado = {}
+    
+    for sheet_name in xls.sheet_names:
+        df = pd.read_excel(xls, sheet_name=sheet_name)
+        sheet_dict = {}
+        
+        for _, row in df.iterrows():
+            modelo_dim = row['Modelos']
+            if pd.isna(modelo_dim) or str(modelo_dim).strip() == '':
+                continue
+            modelo_dim = str(modelo_dim).strip()
+            f1_str = str(row['F1-Score'])
+            
+            # Parsear la cadena F1-Score
+            valores = []
+            for line in f1_str.split('\n'):
+                if ':' in line:
+                    parts = line.split(':', 1)
+                    if len(parts) == 2:
+                        try:
+                            val = float(parts[1].strip())
+                            valores.append(val)
+                        except ValueError:
+                            continue
+            
+            # Calcular la media
+            media = sum(valores) / len(valores) if valores else 0.0
+            sheet_dict[modelo_dim] = media
+        
+        resultado[sheet_name] = sheet_dict
+    
+    return resultado
+
+def crear_grafica_comparativa(datos):
+    """
+    Crea una gráfica de barras comparativa de los F1-Scores, agrupada por dimensión.
+    
+    Args:
+        datos (dict): Diccionario devuelto por recuperar_f1_scores.
+    """
+    df_list = []
+    for algoritmo, inner_dict in datos.items():
+        for modelo_dim, f1_score in inner_dict.items():
+            try:
+                modelo, dimension = modelo_dim.split(' ', 1)
+            except ValueError:
+                modelo = modelo_dim
+                dimension = 'Unknown'
+            df_list.append({
+                'Algoritmo': algoritmo,
+                'Modelo': modelo,
+                'Dimension': dimension,
+                'F1_Score': f1_score
+            })
+    
+    df = pd.DataFrame(df_list)
+    
+    g = sns.catplot(
+        data=df,
+        kind='bar',
+        x='Modelo',
+        y='F1_Score',
+        hue='Algoritmo',
+        col='Dimension',
+        col_wrap=2,
+        palette='Set2',
+        height=6,
+        aspect=1.6,
+        sharey=True,
+        legend=False
+    )
+    g.set_titles('{col_name}')
+    g.set_axis_labels('Modelo', 'F1-Score')
+    g.figure.subplots_adjust(top=0.9, right=0.88, left=0.08, hspace=0.45, wspace=0.25)
+    g.figure.legend(
+        labels=df['Algoritmo'].unique(),
+        title='Algoritmo',
+        loc='center right',
+        bbox_to_anchor=(1, 0.42),
+        frameon=True,
+        ncol=1
+    )
+    plt.suptitle('Comparación de F1-Score por Dimensión, Modelo y Algoritmo de Balanceo', y=0.96)
+    g.figure.tight_layout(rect=[0, 0, 0.92, 0.94])
+    g.figure.savefig('comparacion_f1_scores_por_dimension.png', dpi=500)
+    plt.close(g.figure)
+    print("[EXITO] Gráfica comparativa agrupada por dimensión guardada como 'comparacion_f1_scores_por_dimension.png'")
 
 def generar_graficas_mbti(ruta_csv="dataset9K/MBTI_limpio.csv", columna_etiqueta="type"):
     print(f"[INFO] Leyendo dataset desde {ruta_csv}...")
@@ -85,7 +185,11 @@ def generar_graficas_circulares(ruta_csv="dataset9K/MBTI_limpio.csv", columna_et
     plt.close()
     print("[EXITO] Gráfica de 4 dimensiones en círculos guardada como 'grafica_4_dimensiones_pie.png'")
 
+
+
 if __name__ == "__main__":
-    # ¡Asegúrate de poner la ruta correcta a tu CSV original aquí!
     #generar_graficas_mbti()
-    generar_graficas_circulares()
+    #generar_graficas_circulares()
+    #dataset = recuperar_f1_scores("resultados/Resultados_Roberta-Base-FT.xlsx")
+    #crear_grafica_comparativa(dataset)
+    pass
