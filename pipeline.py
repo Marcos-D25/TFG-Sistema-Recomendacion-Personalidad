@@ -275,6 +275,9 @@ def entreno_total():
     print("="*50)
 
 class Pipeline:
+    '''
+        Clase que permite, a partir de un texto, generar la predicción completa del indicador MBTI
+    '''
     def __init__(self,texto:str,lista_modelos:list[str], lista_encoder:list[str], dispositivo:str = "cuda"):
         '''
         Constructor de la clase Pipeline
@@ -320,9 +323,9 @@ class Pipeline:
         if dimension not in self.modelos.keys():
             raise Exception(f"La dimension {dimension} no se encuentra en los modelos actuales")
         
-        probabilidades = self.modelos[dimension].predict_proba(self.embedding[dimension].reshape(1,-1))
-        print(f"Probabilidades para {dimension}: {probabilidades}")
-        return 0
+        probabilidades = self.modelos[dimension].predict_proba(self.embedding[dimension].reshape(1, -1))
+        #print(f"Probabilidades para {dimension}: {probabilidades}")
+        return probabilidades
     
     def generar_predicciones(self) -> dict:
         '''
