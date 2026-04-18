@@ -1,7 +1,8 @@
 '''
 Este archivo sirve para crear el dataset para el entrenamiento del modelo Llama 3.1
 '''
-
+import shutil
+import os
 from unsloth import FastLanguageModel
 import torch
 import pandas as pd
@@ -9,13 +10,13 @@ import warnings
 import json
 import gc
 import torch
-import tqdm
+from tqdm import tqdm
 
 # Suprimir warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 
-max_seq_length = 2048 # Para no saturar tu gráfica
+max_seq_length = 2048 # Para no saturar ls gráfica
 dtype = None # Auto-detección
 load_in_4bit = True # Usar la cuantización
 
@@ -59,38 +60,42 @@ CRITICAL RULES:
 
 
 df_entreno = []
+FastLanguageModel.for_inference(modelo_llama)#Skipea el balanceo de pesos y va directo al tajo
 
-for post in tqdm(df_mbti_limpio):
-    mensajes = [
-            {"role": "system", "content": system_prompt_preguntas},
-            {"role": "user", "content": f"Text to analyze: {post}"}
-        ]
+with open("dataset_llama_sft.jsonl", "w", encoding="utf-8") as f:
+    for post in tqdm(df_mbti_limpio):
+        post = " ".join(post.split()[:1200]) #Recortar el post en unas 1200 palabras ya que el modelo se retrasa si supera los 2048 tokens (No puedo subir el numero de tokens ya que no me da la grafica)
+        mensajes = [
+                {"role": "system", "content": system_prompt_preguntas},
+                {"role": "user", "content": f"Text to analyze: {post}"}
+            ]
+            
+        inputs = tokenizer.apply_chat_template(
+            mensajes, tokenize=True, add_generation_prompt=True, return_tensors="pt"
+        ).to("cuda")
+
         
-    inputs = tokenizer.apply_chat_template(
-        mensajes, tokenize=True, add_generation_prompt=True, return_tensors="pt"
-    ).to("cuda")
+        outputs = modelo_llama.generate(
+            input_ids=inputs,
+            max_new_tokens=50, # Una pregunta no ocupa más de 50 tokens
+            max_length=None,   # Evita conflicto con max_new_tokens
+            temperature=0.3,   # Bajo para que sea directo y no alucine
+            do_sample=True,
+            pad_token_id=tokenizer.eos_token_id
+        )
 
+        pregunta_generada = tokenizer.batch_decode(outputs[:, inputs.shape[1]:], skip_special_tokens=True)[0].strip()
+
+        formato_entrenamiento = {
+        "messages": [
+            {"role": "system", "content": system_prompt_entreno},
+            {"role": "assistant", "content": pregunta_generada},
+            {"role": "user", "content": post}
+            ]
+        }
     
-    outputs = modelo_llama.generate(
-        input_ids=inputs,
-        max_new_tokens=50, # Una pregunta no ocupa más de 50 tokens
-        max_length=None,   # Evita conflicto con max_new_tokens
-        temperature=0.3,   # Bajo para que sea directo y no alucine
-        do_sample=True,
-        pad_token_id=tokenizer.eos_token_id
-    )
-
-    pregunta_generada = tokenizer.batch_decode(outputs[:, inputs.shape[1]:], skip_special_tokens=True)[0].strip()
-
-    formato_entrenamiento = {
-    "messages": [
-        {"role": "system", "content": system_prompt_entreno},
-        {"role": "assistant", "content": pregunta_generada},
-        {"role": "user", "content": post}
-        ]
-    }
-    with open("dataset_llama_sft.jsonl", "w", encoding="utf-8") as f:
-            f.write(json.dumps(formato_entrenamiento) + "\n")
+        #Escribir resultados durante entreno
+        f.write(json.dumps(formato_entrenamiento) + "\n")
         
 print("¡Dataset sintético generado con éxito!")
 
@@ -106,3 +111,13 @@ gc.collect()
 torch.cuda.empty_cache()
 
 print("¡Memoria de la GPU liberada con éxito!")
+
+# Eliminar carpeta de caché de Unsloth
+
+
+cache_folder = "unsloth_compiled_cache"
+if os.path.exists(cache_folder):
+    shutil.rmtree(cache_folder)
+    print(f"¡Carpeta '{cache_folder}' eliminada con éxito!")
+else:
+    print(f"Carpeta '{cache_folder}' no encontrada, nada que eliminar.")
