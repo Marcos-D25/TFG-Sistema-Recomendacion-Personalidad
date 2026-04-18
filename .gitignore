@@ -5,6 +5,7 @@ __pycache__/
 
 Pruebas.ipynb
 unsloth_compiled_cache/
+.jsonl
 dataset*/
 modelos_*/
 *robertaFT/
