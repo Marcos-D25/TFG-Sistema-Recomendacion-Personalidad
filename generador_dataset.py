@@ -64,7 +64,7 @@ FastLanguageModel.for_inference(modelo_llama)#Skipea el balanceo de pesos y va d
 
 with open("dataset_llama_sft.jsonl", "w", encoding="utf-8") as f:
     for post in tqdm(df_mbti_limpio):
-        post = " ".join(post.split()[:1200]) #Recortar el post en unas 1200 palabras ya que el modelo se retrasa si supera los 2048 tokens (No puedo subir el numero de tokens ya que no me da la grafica)
+        post = " ".join(post.split()[:800]) #Recortar el post en unas 1200 palabras ya que el modelo se retrasa si supera los 2048 tokens (No puedo subir el numero de tokens ya que no me da la grafica)
         mensajes = [
                 {"role": "system", "content": system_prompt_preguntas},
                 {"role": "user", "content": f"Text to analyze: {post}"}
