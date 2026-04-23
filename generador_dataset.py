@@ -62,7 +62,7 @@ CRITICAL RULES:
 df_entreno = []
 FastLanguageModel.for_inference(modelo_llama)#Skipea el balanceo de pesos y va directo al tajo
 
-with open("dataset_llama_sft.jsonl", "w", encoding="utf-8") as f:
+with open("dataset_llama.jsonl", "w", encoding="utf-8") as f:
     for post in tqdm(df_mbti_limpio):
         post = " ".join(post.split()[:800]) #Recortar el post en unas 1200 palabras ya que el modelo se retrasa si supera los 2048 tokens (No puedo subir el numero de tokens ya que no me da la grafica)
         mensajes = [
@@ -89,8 +89,8 @@ with open("dataset_llama_sft.jsonl", "w", encoding="utf-8") as f:
         formato_entrenamiento = {
         "messages": [
             {"role": "system", "content": system_prompt_entreno},
-            {"role": "assistant", "content": pregunta_generada},
-            {"role": "user", "content": post}
+            {"role": "user", "content": post},#Primero lee el post del usuario para tener contexto de la pregunta
+            {"role": "assistant", "content": pregunta_generada}#Luego lee la pregunta
             ]
         }
     
@@ -104,16 +104,13 @@ try:
     del modelo_llama
     del tokenizer
 except NameError:
-    pass # Ignorar si ya estaban borradas
+    pass 
 
 gc.collect()
 
 torch.cuda.empty_cache()
 
 print("¡Memoria de la GPU liberada con éxito!")
-
-# Eliminar carpeta de caché de Unsloth
-
 
 cache_folder = "unsloth_compiled_cache"
 if os.path.exists(cache_folder):
