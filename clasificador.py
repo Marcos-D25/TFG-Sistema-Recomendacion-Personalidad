@@ -127,7 +127,8 @@ class XGB(Clasificador):
     
     def busqueda_hiperparametros(self):
         configuracion = {
-            'objective': 'binary:hinge',
+            'objective': 'binary:logistic',
+            'eval_metric': 'logloss',
             'tree_method': 'hist',  
             'device': 'cuda',       
             'random_state': 42,
@@ -138,19 +139,15 @@ class XGB(Clasificador):
         def objective(trial):
             
             hiperparametros = {
-                'n_estimators': trial.suggest_int('n_estimators', 100, 800, step=50),#Eligira un numero entre 100 y 800
-                'max_depth': trial.suggest_int('max_depth', 3, 9),
-                'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.3, log=True),
-                'min_child_weight': trial.suggest_int('min_child_weight', 1,10),
-
-                'subsample': trial.suggest_float('subsample', 0.6, 1.0),
-                'colsample_bytree': trial.suggest_float('colsample_bytree', 0.5, 1.0),
-                'gamma': trial.suggest_float('gamma', 0.0, 5.0),
-
-                'reg_alpha': trial.suggest_float('reg_alpha', 1e-3, 10.0, log=True), 
-                'reg_lambda': trial.suggest_float('reg_lambda', 1e-3, 10.0, log=True),
-                'grow_policy': trial.suggest_categorical('grow_policy', ['depthwise','lossguide']),
-                'multi_strategy': trial.suggest_categorical('multi_strategy', ['one_output_per_tree','multi_output_tree']),
+                "n_estimators": trial.suggest_int("n_estimators", 200, 1200, step=100),
+                "max_depth": trial.suggest_int("max_depth", 3, 10),
+                "learning_rate": trial.suggest_float("learning_rate", 0.005, 0.15, log=True),
+                "min_child_weight": trial.suggest_int("min_child_weight", 1, 15),
+                "subsample": trial.suggest_float("subsample", 0.65, 1.0),
+                "colsample_bytree": trial.suggest_float("colsample_bytree", 0.5, 1.0),
+                "gamma": trial.suggest_float("gamma", 0, 8),
+                "reg_alpha": trial.suggest_float("reg_alpha", 1e-4, 10, log=True),
+                "reg_lambda": trial.suggest_float("reg_lambda", 1e-4, 10, log=True),
             } 
 
             parametros = hiperparametros | configuracion
@@ -160,13 +157,13 @@ class XGB(Clasificador):
 
             X_train, y_train = self.datasetEnterno["S-N"] #Es la clase con peor ratio de todas
 
-            score = cross_val_score(modelo, X_train, y_train, cv=4, scoring="f1_macro", n_jobs=1)
+            score = cross_val_score(modelo, X_train, y_train, cv=4, scoring="neg_log_loss", n_jobs=1)
             return score.mean()
 
         print("[XGBoost][EJECUCION] Iniciando Estudio Optuna...")
         estudio = optuna.create_study(direction="maximize")
         
-        estudio.optimize(objective, n_trials=25, gc_after_trial=True, n_jobs=4)
+        estudio.optimize(objective, n_trials=50, gc_after_trial=True, n_jobs=4)
 
         return estudio.best_params | configuracion
        

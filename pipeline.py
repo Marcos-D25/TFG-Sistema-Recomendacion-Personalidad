@@ -33,7 +33,7 @@ class Pipeline_Entreno:
             print("[INFO] Seleccionando hiperparametros por defecto para el modelo...")
             parametros = self.clasificador.getParametros()
         
-        self.clasificador.entrenar_modelo()
+        self.clasificador.entrenar_modelo(parametros=parametros)
 
         self.modelos = self.clasificador.getModelos()
         
