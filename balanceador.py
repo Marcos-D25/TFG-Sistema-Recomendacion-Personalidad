@@ -62,9 +62,10 @@ class Balanceador(ABC):
         
         
         if ratio_actual >= 0.5:
-            print(f"   [INFO] Eje naturalmente equilibrado (Ratio: {ratio_actual:.2f}). Se omite balanceo sintético.")
+            print(f"\t[INFO] Eje naturalmente equilibrado (Ratio: {ratio_actual:.2f}). Se omite balanceo sintético.")
             return dataset.copy()
-            
+        else:
+            print("\t[INFO] Balanceando eje...")
 
         try:
             X_resampled, y_resampled = self.balanceador.fit_resample(X, y)

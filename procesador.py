@@ -8,21 +8,22 @@ import torch
 
 #Esta clase se encarga de limpiar, tokenizar y realizar el embedding del dataset a partir de un modelo pre-entrenado
 class Preprocesador:
-    def __init__(self, nombre_modelo,max_lenght = 512, dispositivo='cuda'):
+    def __init__(self, nombre_modelo,max_lenght = 512, dispositivo='cpu'):
         '''
         Constructor del Preprocesador, que se encargará de realizar las tareas de limpieza, tokenizacion y embedding
 
         :param nombre_modelo: Nombre del modelo completo. (Debe aparecer exactamente igual que aparece en Huggingface)
         :param max_lenght: Predefinido a 512 ya que los modelos de Roberta a usar comparten el mismo tamaño maximo de entrada
-        :param dispositivo: Predefinido a 'cuda' si quiere entrenar el modelo usando una tarjeta grafica compatible. Tambien se puede usar 'cpu'
+        :param dispositivo: Predefinido a 'cpu' para forzar la ejecución en CPU. Se puede cambiar a 'cuda' si el entorno lo soporta.
         '''
         self.nombre_modelo = nombre_modelo
         self.dataset = None
+        self.device = torch.device('cuda')
         print(f"[INFO] Cargando tokenizador: {nombre_modelo}")
         self.tokenizer = AutoTokenizer.from_pretrained(nombre_modelo)
 
-        print(f"[INFO] Cargando modelo: {nombre_modelo}")
-        self.modelo = AutoModel.from_pretrained(nombre_modelo).to(dispositivo)
+        print(f"[INFO] Cargando modelo: {nombre_modelo} en CPU")
+        self.modelo = AutoModel.from_pretrained(nombre_modelo, torch_dtype=torch.float32).to(self.device)
         self.max_lenght = max_lenght
         self.modelo.eval()  # Establece el modelo en modo evaluación para evitar dropout y otros comportamientos de entrenamiento
 
@@ -122,9 +123,9 @@ class Preprocesador:
         :return: Array correspondiente con el embedding final del token
         '''
 
-        #Recuperamos los tensores de input_ids y attention_mask del dataset y los subimos a la VRAM
-        input_ids = tokens['input_ids'].to(self.modelo.device)
-        attention_mask = tokens['attention_mask'].to(self.modelo.device)
+        #Recuperamos los tensores de input_ids y attention_mask del dataset y los movemos al dispositivo del modelo (CPU)
+        input_ids = tokens['input_ids'].to(self.device)
+        attention_mask = tokens['attention_mask'].to(self.device)
 
         with torch.no_grad(): #Solo estamos usando el modelo para inferencia, no necesitamos calcular gradientes
             salida = self.modelo(input_ids=input_ids, attention_mask=attention_mask)
@@ -227,7 +228,7 @@ def ejecutar_preprocesador(preprocesador:Preprocesador):
     print("[EJECUCION] Fin preprocesador ...]")
 
 def main():
-    
+    '''
     print("[EJECUCION] Ejecutando ROBERTA BASE...]")
     robertaBase = Preprocesador("FacebookAI/roberta-base")
     robertaBase.cargar_dataset(nombreCarpeta="dataset100K")
@@ -237,7 +238,7 @@ def main():
     robertaBase.guardar_dataset_csv(robertaBase.dataset, os.path.join("dataset100K", "MBTI_limpio.csv"))
     
     print("[EJECUCION] ROBERTA BASE guardado]\n\n")
-    '''
+    
     print("[EJECUCION] Ejecutando XML ROBERTA BASE...]")
     xml_robertaBase = Preprocesador(os.path.join("datasets","MBTI_sinProcesar.csv"),"FacebookAI/xlm-roberta-base")
     ejecutar_preprocesador(xml_robertaBase)
@@ -247,7 +248,7 @@ def main():
     xml_robertaLarge = Preprocesador(os.path.join("datasets","MBTI_sinProcesar.csv"),"FacebookAI/xlm-roberta-large")
     ejecutar_preprocesador(xml_robertaLarge)
     print("[EJECUCION] XML ROBERTA LARGE guardado]\n\n")
-    
+    '''
 
     print("[EJECUCION] Ejecutando ROBERTA BASE FT...")
     robertaFTEI = Preprocesador("./robertaFT/E-I_roberta-base")
@@ -267,7 +268,7 @@ def main():
     robertaFTTF.procesar_dataset(carpeta_dest="datasetRBFT", nom_archivo="datasetTF")
 
     print("[EJECUCION] Fin ROBERTA BASE FT...")
-    '''
+    
 
 if __name__ == "__main__":
     main()

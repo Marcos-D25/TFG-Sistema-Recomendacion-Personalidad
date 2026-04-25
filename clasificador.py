@@ -132,15 +132,16 @@ class XGB(Clasificador):
             'tree_method': 'hist',  
             'device': 'cuda',       
             'random_state': 42,
-            'n_jobs': 1,
-            'verbosity':0
+            'verbosity':0,
+            "n_jobs": 8
         }
 
         def objective(trial):
             
             hiperparametros = {
+                "scale_pos_weight": trial.suggest_float("scale_pos_weight",1,10, step=0.01),
                 "n_estimators": trial.suggest_int("n_estimators", 200, 1200, step=100),
-                "max_depth": trial.suggest_int("max_depth", 3, 10),
+                "max_depth": trial.suggest_int("max_depth", 1, 10),
                 "learning_rate": trial.suggest_float("learning_rate", 0.005, 0.15, log=True),
                 "min_child_weight": trial.suggest_int("min_child_weight", 1, 15),
                 "subsample": trial.suggest_float("subsample", 0.65, 1.0),
@@ -157,7 +158,7 @@ class XGB(Clasificador):
 
             X_train, y_train = self.datasetEnterno["S-N"] #Es la clase con peor ratio de todas
 
-            score = cross_val_score(modelo, X_train, y_train, cv=4, scoring="neg_log_loss", n_jobs=1)
+            score = cross_val_score(modelo, X_train, y_train, cv=4, scoring="f1_macro", n_jobs=1)
             return score.mean()
 
         print("[XGBoost][EJECUCION] Iniciando Estudio Optuna...")

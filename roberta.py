@@ -2,9 +2,45 @@ import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer
 from datasets import Dataset
 import pandas as pd
+import numpy as np
 import os
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+from sklearn.utils.class_weight import compute_class_weight
+import warnings
 
+#SILENCIAR WARNINGS
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=UserWarning, module="torch.cuda")
+
+class WeightedTrainer(Trainer):
+    def __init__(self, class_weights, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Movemos los pesos a la misma tarjeta gráfica que el modelo
+        self.class_weights = torch.tensor(class_weights, dtype=torch.float32).to('cuda')
+
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        labels = inputs.pop("labels")
+        outputs = model(**inputs)
+        logits = outputs.logits
+        # Aplicamos la función de pérdida con nuestros pesos calculados
+        loss_fct = torch.nn.CrossEntropyLoss(weight=self.class_weights)
+        loss = loss_fct(logits.view(-1, self.model.config.num_labels), labels.view(-1))
+        
+        return (loss, outputs) if return_outputs else loss
+
+def compute_metrics(pred):
+    labels = pred.label_ids
+    preds = pred.predictions.argmax(-1)
+    # Usamos macro para vigilar ambas clases
+    precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average='macro')
+    acc = accuracy_score(labels, preds)
+    return {
+        'accuracy': acc,
+        'f1_macro': f1,
+        'precision_macro': precision,
+        'recall_macro': recall
+    }
 
 class FineTunnerRoberta:
     def __init__(self, modelo_base="FacebookAI/roberta-base", nom_carpeta="dataset9K", nom_archivo="MBTI.csv"):
@@ -60,35 +96,47 @@ class FineTunnerRoberta:
         :param dimension: Dimension a entrenar (ej. E/I)
         '''
         self.salida_modelo = f"./{nomCarpeta}/{dimension.replace('/', '-')}_{self.modelo_base.split('/')[-1]}"
-        
         print(f"[INFO] Iniciando Fine-Tuning BINARIO de {self.modelo_base} para la dimension {dimension}...")
         
+        #Calcular pesos dinámicos para esta dimensión
+        etiquetas_train = self.train_dataset[dimension]['label']
+        clases_unicas = np.unique(etiquetas_train)
+        pesos = compute_class_weight(class_weight='balanced', classes=clases_unicas, y=etiquetas_train) #Genera un peso personalizado para el dataset que tratamos dependiendo del numero de ejemplos de cada uno haya
+        print(f"[INFO] Pesos calculados para la clase 0 y 1: {pesos}")
         
         modelo = AutoModelForSequenceClassification.from_pretrained(
             self.modelo_base, 
-            num_labels=2 #num_labels=2 obliga a RoBERTa a ser un clasificador binario puro
+            num_labels=2
         ).to('cuda')
 
         training_args = TrainingArguments(
             output_dir=self.salida_modelo,
-            eval_strategy="epoch",
-            save_strategy="epoch", #Guardamos "instancias" del modelo cada cierto tiempo, se pueden eliminar una vez termina el entrenamiento
-            learning_rate=2e-5, #Uso de learning rates bajos para no descontrolar demasiado los pesos
-
-            per_device_train_batch_size=8, 
-            per_device_eval_batch_size=8,  
-            dataloader_num_workers=4,  #Indica el numero de nucleos de la cpu que alimenta a la grafica     
-            num_train_epochs=3, #Incrementar el numero aumenta el riesgo de overfitting
+            evaluation_strategy="epoch",
+            save_strategy="epoch", 
+            learning_rate=2e-5,
+            
+            per_device_train_batch_size=24, #Numero de textos que procesa en un batch (cambiar si satura la vram)
+            per_device_eval_batch_size=24,  
+            dataloader_num_workers=0,          
+            dataloader_pin_memory=True,
+            optim="adamw_torch_fused",
+            num_train_epochs=3,
             weight_decay=0.01,
-            fp16=True,
+            fp16=False,#Ya no uso la 4060ti, cambia la arquitectura
+            bf16=True,
+            lr_scheduler_type="cosine",
+            warmup_ratio=0.1, 
             load_best_model_at_end=True,
+            metric_for_best_model="f1_macro",
         )
 
-        trainer = Trainer(
+        trainer = WeightedTrainer(
+            class_weights=pesos,
             model=modelo,
             args=training_args,
             train_dataset=self.train_dataset[dimension],
             eval_dataset=self.val_dataset[dimension],
+            compute_metrics=compute_metrics
         )
 
         trainer.train()
@@ -96,6 +144,12 @@ class FineTunnerRoberta:
         print(f"[EXITO] Guardando RoBERTa experta en {dimension} en: {self.salida_modelo}")
         trainer.save_model(self.salida_modelo)
         self.tokenizer.save_pretrained(self.salida_modelo)
+        
+        #Limpieza
+        del modelo
+        del trainer
+        torch.cuda.empty_cache()
+        print("[INFO] VRAM liberada para la siguiente dimensión.\n")
     
     def entrenar_modelo(self, nomCarpeta:str):
         '''
@@ -120,8 +174,8 @@ class FineTunnerRoberta:
         
 def main():
     
-    entrenador = FineTunnerRoberta(nom_carpeta="dataset100K",nom_archivo="MBTI_limpio.csv")
-    entrenador.entrenar_modelo(nomCarpeta="robertaFT100K")
+    entrenador = FineTunnerRoberta(nom_carpeta="dataset9K",nom_archivo="MBTI_limpio.csv")
+    entrenador.entrenar_modelo(nomCarpeta="robertaFT")
     """
     entrenador = FineTunnerRoberta(nom_archivo="MBTI_limpio.csv", modelo_base="FacebookAI/xlm-roberta-base")
     entrenador.entrenar_modelo(nomCarpeta="XLMBrobertaFT")
