@@ -42,9 +42,14 @@ class Correlacionador:
             :return: Diccionario con las % normalizadas para cada dimension de OCEAN
         '''
         res = self.corr_OCEAN @ self.prediccion #Multiplicacion de matrices
+        '''
         #Normalizacion Z-Score + Sigmoide
         max_posibles = np.sum(np.abs(self.corr_OCEAN), axis=1, keepdims=True) #Hallo el maximo posible por cada dimension de OCEAN
         res = ((res / max_posibles) + 1) / 2
+        '''
+        #Normailzacion sigmoide
+        t = 0.8 # Ajusta este valor empíricamente
+        res = 1 / (1 + np.exp(-res / t))
 
         self.OCEAN = res
         personality_traits = ['Openness', 'Concientiousness', 'Extraversion', 'Agreeableness', 'Neuroticism']
@@ -61,8 +66,13 @@ class Correlacionador:
             self.correlacionar_OCEAN()
     
         res = self.corr_GENEROS @ self.OCEAN.reshape(1,-1)[0]
+        '''
         #Normalizacion Softmax
         t = 0.5 #Varia la "distancia" de los resultados incrementandola
         res = np.exp(res/t)
         res = res / np.sum(res)
+        '''
+        #Sigmoide
+        res = 1 / (1 + np.exp(-res))
+        
         return  dict(zip(["Aventura", "Drama", "Comedia", 'Romance','Horror','Misterio'],list(res)))

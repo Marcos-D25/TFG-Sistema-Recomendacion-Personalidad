@@ -22,7 +22,7 @@ class Preprocesador:
         print(f"[INFO] Cargando tokenizador: {nombre_modelo}")
         self.tokenizer = AutoTokenizer.from_pretrained(nombre_modelo)
 
-        print(f"[INFO] Cargando modelo: {nombre_modelo} en CPU")
+        print(f"[INFO] Cargando modelo: {nombre_modelo} en {self.device}")
         self.modelo = AutoModel.from_pretrained(nombre_modelo, torch_dtype=torch.float32).to(self.device)
         self.max_lenght = max_lenght
         self.modelo.eval()  # Establece el modelo en modo evaluación para evitar dropout y otros comportamientos de entrenamiento

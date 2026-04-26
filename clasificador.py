@@ -34,7 +34,7 @@ class Clasificador(ABC):
         
     
     @abstractmethod
-    def busqueda_hiperparametros(self) -> dict:
+    def busqueda_hiperparametros(self,dimension:str) -> dict:
         '''
         Funcion que mediante un diccionario de hiperparametros correspondientes al modelo clasificador concreto, predefinido por defecto, 
         devuelve la mejor combinacion para cada dimension.
@@ -125,7 +125,7 @@ class XGB(Clasificador):
                                 ):
         super().__init__(balanceador, parametros)
     
-    def busqueda_hiperparametros(self):
+    def busqueda_hiperparametros(self, dimension:str):
         configuracion = {
             'objective': 'binary:logistic',
             'eval_metric': 'logloss',
@@ -156,7 +156,7 @@ class XGB(Clasificador):
             # Instanciamos el modelo con los parámetros sugeridos por Optuna
             modelo = XGBClassifier(**parametros)
 
-            X_train, y_train = self.datasetEnterno["S-N"] #Es la clase con peor ratio de todas
+            X_train, y_train = self.datasetEnterno[dimension] #Depende de la dimension
 
             score = cross_val_score(modelo, X_train, y_train, cv=4, scoring="f1_macro", n_jobs=1)
             return score.mean()
@@ -164,7 +164,7 @@ class XGB(Clasificador):
         print("[XGBoost][EJECUCION] Iniciando Estudio Optuna...")
         estudio = optuna.create_study(direction="maximize")
         
-        estudio.optimize(objective, n_trials=50, gc_after_trial=True, n_jobs=4)
+        estudio.optimize(objective, n_trials=50, gc_after_trial=True, n_jobs=6)
 
         return estudio.best_params | configuracion
        
@@ -191,36 +191,53 @@ class LSVC(Clasificador):
                                 }):
         super().__init__(balanceador, parametros)
 
-    def busqueda_hiperparametros(self):
+    def busqueda_hiperparametros(self,dimension:str):
         configuracion = {
             'random_state': 42,
-            'class_weight':'balanced',
-            'max_iter': 5000,
+            'max_iter': 15000, # Los SVM tardan más en converger con datos muy dimensionales
+            'dual': "auto"     # Auto-decisión optima en versiones nuevas de Sklearn
         }
 
         def objective(trial):
             
+            # Determinamos primero la penalización para evitar incompatibilidades
+            penalty = trial.suggest_categorical("penalty", ["l1", "l2"])
+            
             hiperparametros = {
-                'penalty': "l2",
-                'loss': trial.suggest_categorical("loss",['hinge', 'squared_hinge']),
-                'C': trial.suggest_float("C", 1e-4, 10.0, log=True),
-                'tol' : trial.suggest_float("tol", 1e-5, 1e-2, log=True),
-                'fit_intercept' : trial.suggest_categorical("fit_intercept", [True, False]),
+                'penalty': penalty,
+                'C': trial.suggest_float("C", 1e-4, 100.0, log=True),
+                'tol': trial.suggest_float("tol", 1e-5, 1e-1, log=True),
+                'class_weight': trial.suggest_categorical("class_weight", [None, 'balanced']),
+                'fit_intercept': trial.suggest_categorical("fit_intercept", [True, False]),
             } 
+            
+            # Si penalty es L1, solo soporta squared_hinge
+            if penalty == "l1":
+                hiperparametros['loss'] = "squared_hinge"
+                hiperparametros['dual'] = False # Requisito matemático estricto de Sklearn
+            else:
+                hiperparametros['loss'] = trial.suggest_categorical("loss", ['hinge', 'squared_hinge'])
 
-            parametros = hiperparametros | configuracion
+            # Combinamos con config base pisando 'dual' si es necesario
+            parametros = configuracion.copy()
+            parametros.update(hiperparametros)
 
             # Instanciamos el modelo con los parámetros sugeridos por Optuna
             modelo = LinearSVC(**parametros)
-            X_train, y_train = self.datasetEnterno["S-N"]
+            X_train, y_train = self.datasetEnterno[dimension]
             
-            score = cross_val_score(modelo, X_train, y_train, cv=5, scoring="f1_macro", n_jobs=-1)
+            score = cross_val_score(modelo, X_train, y_train, cv=4, scoring="f1_macro", n_jobs=-1)
             return score.mean()
 
         print("[LinearSVC][EJECUCION] Iniciando Estudio Optuna...")
         estudio = optuna.create_study(direction="maximize")
         
-        estudio.optimize(objective, n_trials=20, gc_after_trial=True, n_jobs=-1)
+        estudio.optimize(objective, n_trials=50, gc_after_trial=True, n_jobs=-1)
+        # Re-construimos el diccionario final
+        best_params = estudio.best_params.copy()
+        if best_params.get("penalty") == "l1":
+            best_params["loss"] = "squared_hinge"
+            best_params["dual"] = False
 
         return estudio.best_params | configuracion
     
@@ -247,36 +264,45 @@ class LR(Clasificador):
                                 ):
         super().__init__(balanceador, parametros)
 
-    def busqueda_hiperparametros(self):
+    def busqueda_hiperparametros(self,dimension:str):
         configuracion = {
            'random_state': 42,
            'n_jobs': -1,
-           'max_iter': 5000
+           'max_iter': 10000, # Aumentado para asegurar convergencia con L1/Saga
+           'solver': 'saga'   # Saga soporta l1, l2 y elasticnet
         }
 
         def objective(trial):
+            penalty = trial.suggest_categorical("penalty", ["l1", "l2", "elasticnet", None])
             
             hiperparametros = {
-                'penalty': trial.suggest_categorical("penalty",["l1","l2",None]),
-                'C': trial.suggest_float("C", 1.0, 50.0, log=True),
-                'solver': trial.suggest_categorical("solver", ['lbfgs', 'liblinear', 'newton-cg']),
-                'tol' : trial.suggest_float("tol", 1e-5, 1e-2, log=True),
-                'class_weight': trial.suggest_categorical("class_weight", [None, 'balanced']),
+                'penalty': penalty,
+                'C': trial.suggest_float("C", 1e-4, 100.0, log=True), # Inverso de lambda/alpha en XGBoost
+                'tol': trial.suggest_float("tol", 1e-5, 1e-1, log=True),
+                'class_weight': trial.suggest_categorical("class_weight", [None, 'balanced']), # Equivalente a scale_pos_weight
             } 
+            
+            # Si usamos ElasticNet, Optuna debe buscar el ratio exacto entre L1 y L2
+            if penalty == "elasticnet":
+                hiperparametros['l1_ratio'] = trial.suggest_float("l1_ratio", 0.0, 1.0)
+            
+            # Si penalty es None, C no tiene efecto y tira error en sklearn
+            if penalty is None:
+                del hiperparametros['C']
 
             parametros = hiperparametros | configuracion
 
             # Instanciamos el modelo con los parámetros sugeridos por Optuna
             modelo = LogisticRegression(**parametros)
-            X_train, y_train = self.datasetEnterno["S-N"]
+            X_train, y_train = self.datasetEnterno[dimension]
             
-            score = cross_val_score(modelo, X_train, y_train, cv=5, scoring="f1_macro", n_jobs=-1)
+            score = cross_val_score(modelo, X_train, y_train, cv=4, scoring="f1_macro", n_jobs=-1)
             return score.mean()
 
         print("[LogisticRegression][EJECUCION] Iniciando Estudio Optuna...")
         estudio = optuna.create_study(direction="maximize")
         
-        estudio.optimize(objective, n_trials=20, gc_after_trial=True, n_jobs=-1)
+        estudio.optimize(objective, n_trials=50, gc_after_trial=True, n_jobs=-1)
 
         return estudio.best_params | configuracion
     
@@ -301,7 +327,7 @@ class KNC(Clasificador):
                                 ):
         super().__init__(balanceador, parametros)
     
-    def busqueda_hiperparametros(self):
+    def busqueda_hiperparametros(self,dimension:str):
         configuracion = {
            'n_jobs': -1 
         }
@@ -320,7 +346,7 @@ class KNC(Clasificador):
 
             # Instanciamos el modelo con los parámetros sugeridos por Optuna
             modelo = KNeighborsClassifier(**parametros)
-            X_train, y_train = self.datasetEnterno["S-N"]
+            X_train, y_train = self.datasetEnterno[dimension]
             
             score = cross_val_score(modelo, X_train, y_train, cv=5, scoring="f1_macro", n_jobs=-1)
             return score.mean()
@@ -353,7 +379,7 @@ class DTC(Clasificador):
                                 ):
         super().__init__(balanceador, parametros)
     
-    def busqueda_hiperparametros(self):
+    def busqueda_hiperparametros(self,dimension:str):
         configuracion = {
            'random_state': 42 
         }
@@ -373,7 +399,7 @@ class DTC(Clasificador):
 
             # Instanciamos el modelo con los parámetros sugeridos por Optuna
             modelo = DecisionTreeClassifier(**parametros)
-            X_train, y_train = self.datasetEnterno["S-N"]
+            X_train, y_train = self.datasetEnterno[dimension]
             
             score = cross_val_score(modelo, X_train, y_train, cv=5, scoring="f1_macro", n_jobs=-1)
             return score.mean()
@@ -408,37 +434,49 @@ class MLPC(Clasificador):
                                 ):
         super().__init__(balanceador, parametros)
     
-    def busqueda_hiperparametros(self):
+    def busqueda_hiperparametros(self,dimension:str):
         configuracion = {
            'early_stopping': True,
-           'max_iter':15000,
-           'random_state':42 
+           'max_iter': 2000, # Límite de seguridad
+           'random_state': 42 
         }
 
         def objective(trial):
             
+            solver = trial.suggest_categorical("solver", ['adam', 'sgd'])
+            
             hiperparametros = {
-                "hidden_layer_sizes" : trial.suggest_categorical("hidden_layer_sizes", [(256,128,64), (256,128), (256), (512,), (512,256)]),
-                "activation" : trial.suggest_categorical("activation", ['logistic', 'tanh', 'relu']),
-                "alpha": trial.suggest_float("alpha", 1e-4, 1e-1, log=True),
-                "solver" : trial.suggest_categorical("solver", ['sgd', 'adam']),
-                "learning_rate" : trial.suggest_categorical("learning_rate", ['constant', 'invscaling', 'adaptive']),
-                "learning_rate_init" : trial.suggest_categorical("learning_rate_init", [1e-3, 1e-5]),
+                # Exploramos arquitecturas desde 1 capa ancha hasta 3 capas embudo (Deep)
+                "hidden_layer_sizes": trial.suggest_categorical("hidden_layer_sizes", [
+                    (128,), (256,), (512,), 
+                    (256, 128), (512, 256), 
+                    (256, 128, 64), (512, 256, 128)
+                ]),
+                "activation": trial.suggest_categorical("activation", ['relu', 'tanh', 'logistic']),
+                "solver": solver,
+                "alpha": trial.suggest_float("alpha", 1e-5, 1e-1, log=True), # Regularización L2
+                "learning_rate_init": trial.suggest_float("learning_rate_init", 1e-5, 1e-1, log=True),
+                "batch_size": trial.suggest_categorical("batch_size", [32, 64, 128, 256, "auto"])
             } 
+            
+            # Parámetros exclusivos del optimizador SGD
+            if solver == 'sgd':
+                hiperparametros["learning_rate"] = trial.suggest_categorical("learning_rate", ['constant', 'invscaling', 'adaptive'])
+                hiperparametros["momentum"] = trial.suggest_float("momentum", 0.5, 0.99) 
 
             parametros = hiperparametros | configuracion
 
             # Instanciamos el modelo con los parámetros sugeridos por Optuna
             modelo = MLPClassifier(**parametros)
-            X_train, y_train = self.datasetEnterno["S-N"]
+            X_train, y_train = self.datasetEnterno[dimension]
             
-            score = cross_val_score(modelo, X_train, y_train, cv=5, scoring="f1_macro", n_jobs=-1)
+            score = cross_val_score(modelo, X_train, y_train, cv=4, scoring="f1_macro", n_jobs=-1)
             return score.mean()
 
         print("[MLPClassifier][EJECUCION] Iniciando Estudio Optuna...")
         estudio = optuna.create_study(direction="maximize")
         
-        estudio.optimize(objective, n_trials=25, gc_after_trial=True, n_jobs=-1)
+        estudio.optimize(objective, n_trials=50, gc_after_trial=True, n_jobs=-1)
 
         return estudio.best_params | configuracion
     

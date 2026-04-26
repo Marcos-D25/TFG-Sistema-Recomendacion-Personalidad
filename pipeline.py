@@ -298,19 +298,25 @@ class Pipeline:
         if len(lista_encoder) == 1:
             lista_encoder = lista_encoder*4
         
-
+        self.umbrales = {
+            "E-I": 0.54,
+            "S-N": 0.31,
+            "T-F": 0.54,
+            "J-P": 0.59
+            
+        }
         self.texto = texto
         self.modelos = {}
         self.embedding = {}
         self.prediccion = {}
         for ruta in lista_modelos:
-            _, modelo = ruta.split("\\")
-            if modelo[4:] != encoder:
-                raise Exception("Los encoder son distintos, no se puede proceder")
+            modelo = ruta.split("\\")[-1]
+            #if modelo[4:] != encoder:
+            #    raise Exception("Los encoder son distintos, no se puede proceder")
             dimension = modelo[:3]
             self.modelos[dimension] = joblib.load(ruta)
 
-        for dimension, encoder in zip(["E-I", "J-P", "S-N", "T-F"], lista_encoder):
+        for dimension, encoder in zip(["E-I", "S-N", "T-F", "J-P"], lista_encoder):
             self.embedding[dimension] = Preprocesador(nombre_modelo=encoder, dispositivo=dispositivo).procesar_texto(texto)
 
     def predecir_dimension(self,dimension:str) -> int:
@@ -324,8 +330,15 @@ class Pipeline:
             raise Exception(f"La dimension {dimension} no se encuentra en los modelos actuales")
         
         probabilidades = self.modelos[dimension].predict_proba(self.embedding[dimension].reshape(1, -1))
-        #print(f"Probabilidades para {dimension}: {probabilidades}")
-        return probabilidades
+        p_clase_1 = probabilidades[0][1]
+        
+        # Recuperamos el umbral óptimo. Si no existe, usamos 0.5 por defecto
+        umbral = self.umbrales.get(dimension, 0.5)
+        # Aplicamos la lógica de decisión: 1 si supera el umbral, 0 si no.
+        prediccion_binaria = 1 if p_clase_1 >= umbral else 0
+        print(f"Probabilidades para {dimension}: {probabilidades}")
+        
+        return prediccion_binaria, p_clase_1
     
     def generar_predicciones(self) -> dict:
         '''
@@ -333,22 +346,39 @@ class Pipeline:
 
         :return: Diccionario que contiene las predicciones para cada modelo
         '''
-        prediccion = {}
-        for dimension in self.modelos.keys():
-            prediccion[dimension] = self.predecir_dimension(dimension)
+        res_binario = {}
+        res_letras = ""
         
-        self.prediccion = prediccion
+        # Mapeo para traducir el 0/1 a letras MBTI
+        mapeo = {
+            "E-I": {0: "E", 1: "I"},
+            "S-N": {0: "S", 1: "N"},
+            "T-F": {0: "T", 1: "F"},
+            "J-P": {0: "J", 1: "P"}
+        }
 
-        return prediccion
+        for dimension in ["E-I", "S-N", "T-F", "J-P"]:
+            clase, proba = self.predecir_dimension(dimension)
+            res_binario[dimension] = (clase, proba)
+            res_letras += mapeo[dimension][clase]
+        
+        print(f"\n[RESULTADO] Perfil MBTI detectado: {res_letras}")
+        return res_binario
         
 
 
 if __name__ == "__main__":
     texto = '''
-'''    
 
-    lista_modelos = ["modelos_MLPC\\E-I_Roberta-Base-FT", "modelos_XGB\\S-N_Roberta-Base-FT", "modelos_XGB\\T-F_Roberta-Base-FT", "modelos_MLPC\\J-P_Roberta-Base-FT"]
-    lista_encoders = ["robertaFT\\E-I_roberta-base","robertaFT\\J-P_roberta-base","robertaFT\\S-N_roberta-base","robertaFT\\T-F_roberta-base"]
+ngl my perfect friday night is just me, my cat, a cozy blanket, and rewatching my comfort show for the 100th time. I got so stressed today because the schedule changed at work and I absolutely need my routine to function lol. also baked cookies for my coworkers just bc 🍪 soft girl era but make it anxious haha.
+
+'''
+    lista_modelos = ["Modelos Definitivos\\XGBoost\\E-I_XGBoost_calibrado.joblib",
+                     "Modelos Definitivos\\Linear_SVC\\S-N_Linear_SVC_calibrado.joblib",
+                     "Modelos Definitivos\\Linear_SVC\\T-F_Linear_SVC_calibrado.joblib",
+                     "Modelos Definitivos\\Regresion_Logistica\\J-P_Regresion_Logistica_calibrado.joblib"]
+    
+    lista_encoders = ["robertaFT\\E-I_roberta-base","robertaFT\\S-N_roberta-base","robertaFT\\T-F_roberta-base","robertaFT\\J-P_roberta-base"]
     predictor = Pipeline(texto, lista_modelos, lista_encoders)
 
     predictor.generar_predicciones()
