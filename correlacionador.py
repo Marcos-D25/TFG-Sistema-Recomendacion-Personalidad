@@ -25,6 +25,7 @@ class Correlacionador:
         ]
 
         self.corr_GENEROS = [
+             #   O      C       E      A       N
             [0.30,  -0.01,	-0.45,  -0.28,	0.04],#Aventura
             [-0.48, -0.19,	0.50,   0.52,   0.15],#Drama
             [-0.12, 0.02,   0.07,   0.10,	0.00],#Comedia
@@ -32,6 +33,29 @@ class Correlacionador:
             [0.10,  -0.10,  0.25,   0.10,   0.20],#Horror
             [0.40,  0.10,   -0.10,  -0.10,  0.10]#Misterio
         ] 
+
+        #Indicar en la memoria que los r^2 de los generos son muy bajos, representando menos del 10% de la influencia a elegir un videojuego
+        #Puntuacion que devolveria es 0, 100
+        self.corr_JUEGOS = [
+            #   O     C     E      A     N
+            [-.136, .054, .260, -.181, .158], #Juegos de disparos +43.740
+            [-.050, .158, .298, -.141, .185], #Accion sin disparos (Como mario bros) +31.820
+            [-.097, .074, .249, -.156, .170], #Juegos de lucha +39.573
+            [.179, -.012, .004, -.063, .029], #Juegos estrategia por turnos 56.411
+            [.057,  .007, .126, -.110, .075], #Juegos estrategia en tiempo real +54.150
+            [.087, -.017, .044,  .016, .150], #Juegos RPG +49.764
+            [-.155, .056, .233, -.107, .101], #Juegos de deportes +44.918
+            [.083, -.161, .133,  .011, .124], #Juegos de carreras +43.424
+            #Juegos de simulacion de construccion (No es lo suficiente relevante, <1%)
+            [.256, -.084,-.068, -.047,-.079], #Juegos de simulacion como Spore o los Sims (Sandbox) +50.746
+            [.246, .090, -.057,  .106, .065], #Juegos de aventura (enfocados en la historia) +40.297
+            [.315, .180, -.041, .065, -.037], #Juegos de puzzles +25.799
+            [-.357, .010, .454, -.239, .153], #Juegos multijugador online +58.935
+        ]
+
+        self.corr_MUSICA = [
+
+        ]
         self.OCEAN = None
         self.GENEROS = None
     
