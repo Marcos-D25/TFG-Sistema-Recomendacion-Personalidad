@@ -6,7 +6,7 @@ class Correlacionador:
     '''
         Clase que permite establecer las correlaciones:
             MBTI -> OCEAN
-            OCEAN -> GENEROS AUDIOVISUALES
+            OCEAN -> GENEROS AUDIOVISUALES / VIDEOJUEGOS / MUSICA
     '''
     def __init__(self, prediccion:dict):
         '''
@@ -14,7 +14,7 @@ class Correlacionador:
 
             :param prediccion: Diccionario que contiene la prediccion generada por la funcion "generar_predicciones" de la clase Pipeline
         '''
-        self.prediccion = np.array([prediccion[dim][0] for dim in prediccion.keys()]).reshape(-1,1) - 0.5 #Genera una matriz 8x1 centrada para que no se incluya ruido en la conversion 
+        self.prediccion = np.array([prediccion[dim] for dim in prediccion.keys()]).reshape(-1,1) - 0.5 #Genera una matriz 8x1 centrada para que no se incluya ruido en la conversion 
 
         self.corr_OCEAN = [ #Matriz ordenada sacada del articulo "Correlation based data unification for personality trait prediction", la salida coincide con O C E A N
             [ 0.28, -0.32, -0.66,  0.64, -0.17,  0.13, -0.25,  0.26],
@@ -24,7 +24,7 @@ class Correlacionador:
             [-0.30,  0.31,  0.15, -0.14, -0.13,  0.12,  0.07, -0.07]
         ]
 
-        self.corr_GENEROS = [
+        self.corr_CINE = [
             #   O     C     E      A     N
             [ 0.327,  0.190,  0.119,  0.173,  0.008], #Thrillers 
             [ 0.026,  0.090,  0.153,  0.262,  0.111], #Romance
@@ -38,12 +38,8 @@ class Correlacionador:
             [ 0.208, -0.044,  0.018,  0.045,  0.027], #Fantasy
             [ 0.115, -0.012,  0.171,  0.206,  0.112]  #Musicals
         ]
-
-        self.generos_cine = [
-            "Thrillers", "Romance", "Westerns", "Comedy", "Action", 
-            "Drama", "Science Fiction", "Crime", "Horrors", "Fantasy", "Musicals"
-        ]
-
+        self.nombres_generos = ["Thriller", "Romance", "Viejo Oeste", "Comedia", "Acción", "Drama", "Ciencia Ficción", "Crimen", "Horror", "Fantasia/Aventura", "Musical"]
+        
         #Indicar en la memoria que los r^2 de los generos son muy bajos, representando menos del 10% de la influencia a elegir un videojuego
         #Puntuacion que devolveria es 0, 100
         self.corr_JUEGOS = [
@@ -62,6 +58,8 @@ class Correlacionador:
             [.315, .180, -.041, .065, -.037], #Juegos de puzzles +25.799
             [-.357, .010, .454, -.239, .153], #Juegos multijugador online +58.935
         ]
+        self.bases_juegos = np.array([43.740, 31.820, 39.573, 56.411, 54.150, 49.764, 44.918, 43.424, 50.746, 40.297, 25.799, 58.935])
+        self.nombres_juegos = ["Disparos", "Acción", "Lucha", "Estrategia por Turnos", "Estrategia Tiempo Real", "RPG", "Deportes", "Carreras", "Simulación/Sandbox", "Aventura Narrativa", "Puzzles", "Multijugador Online"]
 
         self.corr_MUSICA_1 = [
             #   O     C     E      A     N
@@ -69,32 +67,45 @@ class Correlacionador:
             [-.019, -.017, .129, .008, -.049], #Rap
             [.077, -.029, .034, -.033, -.002], #Electronic
             [-.055, -.016, -.071, -.072, .057],  #Rock
-            [.101, .008, -.067, -.019, -.031], #New Age
             [.136, -.037, -.064,  -.032, 0], #Classical
-            [.017, -.042, .061, .009, -.041], #Reggae
             [.120, -.011, .023, -.011, -.044], #Blues
             [.106, -.049, -.002, .104, -.012],  #Country
-            [.134, -.021, -.006, -.028, -.020], #World
             [.214, -.115, -.044, .104, .002], #Folk
-            [.041, .010, .018, -.027, -.012], #Easy Listening
             [.139, -.007, .042, .031, -.061], #Jazz
-            [.120, -.020, .006, -.021, .006], #Vocal (a capella)
             [.002, -.061, -.020, .001, .030], #Punk
             [.115, -.104, -.031, .060, .101], #Alternative
             [-.034, .035, .056, .056, -.030], #Pop
             [-.031, -.023, -.076, -.069, -.001] #Heavy Metal
         ]
-
+        self.nombres_musica_1 = ["R&B", "Rap", "Electronica", "Rock", "Classical", "Blues", "Country", "Folk", "Jazz", "Punk", "Alternative", "Pop", "Heavy Metal"]
         self.corr_MUSICA_2 = [
             #   O     C     E      A     N
-            [.41, -.06, -.02, .03, .04], #Classical, Jazz, Blues, Folk (Reflective & Complex)
-            [.15, -.03, .08, .01, -.01], #Alternative, Rock, Heavy Metal (Intense & Rebellious)
-            [-.08, .18, .15, .24, -.04], #Country, Pop, Religious, Sound Tracks
-            [.04, -.03, .19, .09, -.01]  #Rap & Hip-Hop, Soul & Funk, Electronic & Dance
+            [.41, -.06, -.02, .03, .04], #Classical, Jazz, Blues, Folk, R&B (Reflective & Complex)
+            [.15, -.03, .08, .01, -.01], #Alternative, Rock, Heavy Metal, Punk (Intense & Rebellious)
+            [-.08, .18, .15, .24, -.04], #Country, Pop, Religious, Sound Tracks (Upbeat & Conventional)
+            [.04, -.03, .19, .09, -.01]  #Rap & Hip-Hop, Soul & Funk, Electronic & Dance (Upbeat & Conventional)
         ]
 
+        # Mapeo: Índice del género específico (corr_MUSICA_1) -> Índice del macrogénero (corr_MUSICA_2)
+        # 0: Reflective/Complex, 1: Intense/Rebellious, 2: Upbeat/Conventional, 3: Energetic/Rhythmic
+        self.mapeo_musica = {
+            0: 0,   # R&B -> (Reflective & Complex)
+            1: 3,   # Rap -> Energetic/Rhythmic
+            2: 3,   # Electronic -> Energetic/Rhythmic
+            3: 1,   # Rock -> Intense/Rebellious
+            4: 0,   # Classical -> Reflective/Complex
+            5: 0,   # Blues -> Reflective/Complex
+            6: 2,   # Country -> Upbeat/Conventional
+            7: 0,  # Folk -> Reflective/Complex
+            8: 0,  # Jazz -> Reflective/Complex
+            9: 1,  # Punk -> Intense/Rebellious
+            10: 1,  # Alternative -> Intense/Rebellious
+            11: 2,  # Pop -> Upbeat/Conventional
+            12: 1   # Heavy Metal -> Intense/Rebellious
+        }
+
         self.OCEAN = None
-        self.GENEROS = None
+        
     
     def correlacionar_OCEAN(self) -> dict:
         '''
@@ -103,37 +114,114 @@ class Correlacionador:
             :return: Diccionario con las % normalizadas para cada dimension de OCEAN
         '''
         res = self.corr_OCEAN @ self.prediccion #Multiplicacion de matrices
-        '''
-        #Normalizacion Z-Score + Sigmoide
-        max_posibles = np.sum(np.abs(self.corr_OCEAN), axis=1, keepdims=True) #Hallo el maximo posible por cada dimension de OCEAN
-        res = ((res / max_posibles) + 1) / 2
-        '''
-        #Normailzacion sigmoide
-        t = 0.8 # Ajusta este valor empíricamente
-        res = 1 / (1 + np.exp(-res / t))
 
-        self.OCEAN = res
-        personality_traits = ['Openness', 'Concientiousness', 'Extraversion', 'Agreeableness', 'Neuroticism']
-        return dict(zip(personality_traits, res.reshape(1,-1)[0]*100))
+        #Normailzacion sigmoide
+        t = 4 # Ajusta este valor empíricamente
+        self.OCEAN = 1 / (1 + np.exp(-res * t))
+
+        return dict(
+                zip(
+                    ['Openness', 'Concientiousness', 'Extraversion', 'Agreeableness', 'Neuroticism'], 
+                    [float(v * 100) for v in self.OCEAN.reshape(1, -1)[0]]
+                )
+            )
+    
 
     def correlacionar_GENEROS(self) -> dict:
         '''
-            Funcion que genera automaticamente la correlacion de OCEAN a GENEROS (generos audiovisuales)
+            Funcion que genera automaticamente la correlacion de OCEAN a GENEROS PELICULAS/SERIES
             
-            :return: Diccionario con los % normalizados para cada género
+            :return: Diccionario con los % normalizados para cada género de peliculas/series
         '''
 
-        if(self.OCEAN == None): #Se debe de tener el array OCEAN para continuar
+        if(self.OCEAN is None): #Se debe de tener el array OCEAN para continuar
             self.correlacionar_OCEAN()
-    
-        res = self.corr_GENEROS @ self.OCEAN.reshape(1,-1)[0]
-        '''
-        #Normalizacion Softmax
-        t = 0.5 #Varia la "distancia" de los resultados incrementandola
-        res = np.exp(res/t)
-        res = res / np.sum(res)
-        '''
-        #Sigmoide
-        res = 1 / (1 + np.exp(-res))
         
-        return  dict(zip(["Aventura", "Drama", "Comedia", 'Romance','Horror','Misterio'],list(res)))
+        ocean_centrado = (self.OCEAN.flatten() - 0.5) * 2
+
+        res = self.corr_CINE @ ocean_centrado
+
+
+        # Al estar normalizado, usamos temperaturas y bias más bajos
+        temp_cine = 7  
+        bias_cine = 1.8  # Bias alto asegura que el top 1 roce el 90%
+        res = 1 / (1 + np.exp(-(res * temp_cine + bias_cine)))
+        
+        return dict(zip(self.nombres_generos, [float(np.round(x * 100, 2)) for x in res]))
+    
+    def correlacionar_JUEGOS(self) -> dict:
+        '''
+            Funcion que genera automaticamente la correlacion de OCEAN a GENEROS de VIDEOJUEGOS
+            
+            :return: Diccionario con los % normalizados para cada género de videojuegos
+        '''
+        if self.OCEAN is None:
+            self.correlacionar_OCEAN()
+            
+        # Regresión Lineal: Base + (Matriz @ OCEAN_en_escala_100)
+        ocean_100 = self.OCEAN.flatten() * 100
+        amplificador = 3.0
+        res = ((self.corr_JUEGOS @ ocean_100) * amplificador) + self.bases_juegos
+        
+        # Recortamos los valores para que el score nunca sobrepase 100 ni sea negativo
+        res = np.clip(res, 0, 100)
+        return dict(
+                zip(
+                    self.nombres_juegos,
+                    [float(x) for x in np.round(res,2)])
+                )
+
+
+    def correlacionar_MUSICA(self) -> dict:
+        if self.OCEAN is None:
+            self.correlacionar_OCEAN()
+            
+        ocean_centrado = (self.OCEAN.flatten() - 0.5) * 2
+        
+        # 1. Calculamos las puntuaciones base (crudos, antes de la sigmoide)
+        res_especifica = self.corr_MUSICA_1 @ ocean_centrado
+        res_general = self.corr_MUSICA_2 @ ocean_centrado
+        
+        # 2. Sumamos la puntuación de apoyo (macrogénero) al género específico
+        res_final = np.zeros_like(res_especifica)
+        
+        for i, macro_idx in self.mapeo_musica.items():
+            # Sumamos: OCEAN x Género Específico + OCEAN x Macrogénero
+            res_final[i] = res_especifica[i] + res_general[macro_idx]
+                
+                
+        temp_musica = 7
+        bias_musica = 1.8 
+        res_final = 1 / (1 + np.exp(-(res_final * temp_musica + bias_musica)))
+        
+        return dict(zip(self.nombres_musica_1, [float(np.round(x * 100, 2)) for x in res_final]))
+
+
+if __name__ == "__main__":
+    from pipeline import Pipeline
+    texto = '''
+    I honestly can't stand those endless corporate strategy meetings where everyone just talks in circles about abstract concepts, 'synergy', and long-term visions. Just give me the broken backend architecture and leave me alone in my zone for a few hours. 
+    I don't need a detailed roadmap or a strict schedule to get things done; 
+    I prefer to dive in, take it apart, figure out exactly why the database is crashing, and build a practical fix on the fly. When I'm not working, I'm usually in my garage tinkering with my motorcycle. 
+    People think I'm antisocial because I avoid networking events, but I just prefer interacting with mechanical or code systems that actually make logical sense rather than dealing with office politics.
+    '''
+
+    lista_modelos = ["Modelos Definitivos\\XGBoost\\E-I_XGBoost_calibrado.joblib",
+                     "Modelos Definitivos\\Linear_SVC\\S-N_Linear_SVC_calibrado.joblib",
+                     "Modelos Definitivos\\Linear_SVC\\T-F_Linear_SVC_calibrado.joblib",
+                     "Modelos Definitivos\\Regresion_Logistica\\J-P_Regresion_Logistica_calibrado.joblib"]
+    
+    lista_encoders = ["robertaFT\\E-I_roberta-base","robertaFT\\S-N_roberta-base","robertaFT\\T-F_roberta-base","robertaFT\\J-P_roberta-base"]
+    predictor = Pipeline(texto, lista_modelos, lista_encoders)
+
+    probabilidades, perfil = predictor.generar_predicciones()
+
+    correlacionador = Correlacionador(prediccion=probabilidades)
+    ocean = correlacionador.correlacionar_OCEAN()
+    print(ocean)
+    cine = correlacionador.correlacionar_GENEROS()
+    print(cine)
+    musica = correlacionador.correlacionar_MUSICA()
+    print(musica)
+    videojuegos = correlacionador.correlacionar_JUEGOS()
+    print(videojuegos)

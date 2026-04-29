@@ -3,7 +3,7 @@ __pycache__/
 *.py[codz]
 *$py.class
 
-Pruebas.ipynb
+*.ipynb
 Modelos Definitivos/
 unsloth_compiled_cache/
 .jsonl

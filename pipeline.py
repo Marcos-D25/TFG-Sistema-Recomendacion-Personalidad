@@ -298,6 +298,7 @@ class Pipeline:
         if len(lista_encoder) == 1:
             lista_encoder = lista_encoder*4
         
+        '''
         self.umbrales = {
             "E-I": 0.54,
             "S-N": 0.31,
@@ -305,10 +306,11 @@ class Pipeline:
             "J-P": 0.59
             
         }
+        '''
         self.texto = texto
         self.modelos = {}
         self.embedding = {}
-        self.prediccion = {}
+        self.probabilidades = {}
         for ruta in lista_modelos:
             modelo = ruta.split("\\")[-1]
             #if modelo[4:] != encoder:
@@ -319,7 +321,8 @@ class Pipeline:
         for dimension, encoder in zip(["E-I", "S-N", "T-F", "J-P"], lista_encoder):
             self.embedding[dimension] = Preprocesador(nombre_modelo=encoder, dispositivo=dispositivo).procesar_texto(texto)
 
-    def predecir_dimension(self,dimension:str) -> int:
+
+    def predecir_dimension(self,dimension:str) -> tuple[str,float]:
         '''
         Funcion que sirve para predecir una simple dimension con el modelo correspondiente
 
@@ -329,41 +332,40 @@ class Pipeline:
         if dimension not in self.modelos.keys():
             raise Exception(f"La dimension {dimension} no se encuentra en los modelos actuales")
         
-        probabilidades = self.modelos[dimension].predict_proba(self.embedding[dimension].reshape(1, -1))
-        p_clase_1 = probabilidades[0][1]
+        prob = self.modelos[dimension].predict_proba(self.embedding[dimension].reshape(1, -1))
+        pred = self.modelos[dimension].predict(self.embedding[dimension].reshape(1, -1))
         
+        dimA, dimB = dimension.split("-")
+
+        self.probabilidades[dimA] = prob[0][0]
+        self.probabilidades[dimB] = prob[0][1]
+
         # Recuperamos el umbral óptimo. Si no existe, usamos 0.5 por defecto
-        umbral = self.umbrales.get(dimension, 0.5)
+        #umbral = self.umbrales.get(dimension, 0.5)
         # Aplicamos la lógica de decisión: 1 si supera el umbral, 0 si no.
-        prediccion_binaria = 1 if p_clase_1 >= umbral else 0
-        print(f"Probabilidades para {dimension}: {probabilidades}")
+        #prediccion_binaria = 1 if p_clase_1 >= umbral else 0
+        print(f"Probabilidades para {dimension}: {prob}")
         
-        return prediccion_binaria, p_clase_1
+        return [dimA,dimB][pred[0]], prob
     
-    def generar_predicciones(self) -> dict:
+    def generar_predicciones(self) -> tuple[dict, str]:
         '''
         Funcion que genera la prediccion de cada dimension del texto.
 
         :return: Diccionario que contiene las predicciones para cada modelo
         '''
         res_binario = {}
-        res_letras = ""
+        perfil = ""
         
-        # Mapeo para traducir el 0/1 a letras MBTI
-        mapeo = {
-            "E-I": {0: "E", 1: "I"},
-            "S-N": {0: "S", 1: "N"},
-            "T-F": {0: "T", 1: "F"},
-            "J-P": {0: "J", 1: "P"}
-        }
+        
 
         for dimension in ["E-I", "S-N", "T-F", "J-P"]:
             clase, proba = self.predecir_dimension(dimension)
             res_binario[dimension] = (clase, proba)
-            res_letras += mapeo[dimension][clase]
+            perfil += clase
         
-        print(f"\n[RESULTADO] Perfil MBTI detectado: {res_letras}")
-        return res_binario
+        print(f"\n[RESULTADO] Perfil MBTI detectado: {perfil}")
+        return self.probabilidades, perfil
         
 
 
