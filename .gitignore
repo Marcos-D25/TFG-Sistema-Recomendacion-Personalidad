@@ -5,6 +5,7 @@ __pycache__/
 
 *.ipynb
 Modelos Definitivos/
+mi_modelo_entrevistador_tfg/
 unsloth_compiled_cache/
 .jsonl
 dataset*/
