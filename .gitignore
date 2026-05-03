@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 
 *.ipynb
+*.csv
 Modelos Definitivos/
 mi_modelo_entrevistador_tfg/
 unsloth_compiled_cache/

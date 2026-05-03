@@ -36,9 +36,10 @@ class Correlacionador:
             [ 0.157,  0.042,  0.073,  0.167,  0.012], #Crime
             [ 0.033, -0.097,  0.057, -0.121,  0.030], #Horror
             [ 0.208, -0.044,  0.018,  0.045,  0.027], #Fantasy
+            [ 0.208, -0.044,  0.018,  0.045,  0.027], #Adventure
             [ 0.115, -0.012,  0.171,  0.206,  0.112]  #Musicals
         ]
-        self.nombres_generos = ["Thriller", "Romance", "Viejo Oeste", "Comedia", "Acción", "Drama", "Ciencia Ficción", "Crimen", "Horror", "Fantasia/Aventura", "Musical"]
+        self.nombres_generos = ["Thriller", "Romance", "Western", "Comedia", "Acción", "Drama", "Ciencia Ficción", "Crimen", "Horror", "Fantasia","Aventura", "Musical"]
         
         #Indicar en la memoria que los r^2 de los generos son muy bajos, representando menos del 10% de la influencia a elegir un videojuego
         #Puntuacion que devolveria es 0, 100
@@ -121,7 +122,7 @@ class Correlacionador:
 
         return dict(
                 zip(
-                    ['Openness', 'Concientiousness', 'Extraversion', 'Agreeableness', 'Neuroticism'], 
+                    ['Openness', 'Conscientiousness', 'Extraversion', 'Agreeableness', 'Neuroticism'], 
                     [float(v * 100) for v in self.OCEAN.reshape(1, -1)[0]]
                 )
             )
