@@ -39,7 +39,7 @@ class Correlacionador:
             [ 0.208, -0.044,  0.018,  0.045,  0.027], #Adventure
             [ 0.115, -0.012,  0.171,  0.206,  0.112]  #Musicals
         ]
-        self.nombres_generos = ["Thriller", "Romance", "Western", "Comedia", "Acción", "Drama", "Ciencia Ficción", "Crimen", "Horror", "Fantasia","Aventura", "Musical"]
+        self.nombres_generos = ["Thriller", "Romance", "Western", "Comedy", "Action", "Drama", "Science Fiction", "Crime", "Horror", "Fantasy","Adventure", "Musical"]
         
         #Indicar en la memoria que los r^2 de los generos son muy bajos, representando menos del 10% de la influencia a elegir un videojuego
         #Puntuacion que devolveria es 0, 100
@@ -60,7 +60,7 @@ class Correlacionador:
             [-.357, .010, .454, -.239, .153], #Juegos multijugador online +58.935
         ]
         self.bases_juegos = np.array([43.740, 31.820, 39.573, 56.411, 54.150, 49.764, 44.918, 43.424, 50.746, 40.297, 25.799, 58.935])
-        self.nombres_juegos = ["Disparos", "Acción", "Lucha", "Estrategia por Turnos", "Estrategia Tiempo Real", "RPG", "Deportes", "Carreras", "Simulación/Sandbox", "Aventura Narrativa", "Puzzles", "Multijugador Online"]
+        self.nombres_juegos = ["Shooting", "Action", "Fighting", "Turn-based", "Real Time Strategy", "RPG", "Sports", "Races", "Simulation/Sandbox", "Adventure", "Puzzles", "Multiplayer Online"]
 
         self.corr_MUSICA_1 = [
             #   O     C     E      A     N
@@ -78,7 +78,7 @@ class Correlacionador:
             [-.034, .035, .056, .056, -.030], #Pop
             [-.031, -.023, -.076, -.069, -.001] #Heavy Metal
         ]
-        self.nombres_musica_1 = ["R&B", "Rap", "Electronica", "Rock", "Classical", "Blues", "Country", "Folk", "Jazz", "Punk", "Alternative", "Pop", "Heavy Metal"]
+        self.nombres_musica_1 = ["R&B", "Rap", "Electronic", "Rock", "Classical", "Blues", "Country", "Folk", "Jazz", "Punk", "Alternative", "Pop", "Heavy Metal"]
         self.corr_MUSICA_2 = [
             #   O     C     E      A     N
             [.41, -.06, -.02, .03, .04], #Classical, Jazz, Blues, Folk, R&B (Reflective & Complex)
