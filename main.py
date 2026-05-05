@@ -2,6 +2,8 @@
 from agente import AgenteLlama
 from pipeline import Pipeline
 from correlacionador import Correlacionador
+from recomendador import Recomendador
+from deep_translator import GoogleTranslator
 #FASE 1 -> AGENTE CONVERSACIONAL
 agente = AgenteLlama()
 print("\n" + "=" * 50)
@@ -26,7 +28,7 @@ if agente.entrevista_finalizada:
     conversacion = " ".join(conversacion) #Uno toda la conversacion en un único archivo
     print("Historial de usuario:", conversacion)
 
-
+conversacion = GoogleTranslator(source='es', target='en').translate(conversacion)
 #FASE 2 -> PREDICCION MBTI
 lista_modelos = ["Modelos Definitivos\\XGBoost\\E-I_XGBoost_calibrado.joblib",
                      "Modelos Definitivos\\Linear_SVC\\S-N_Linear_SVC_calibrado.joblib",
@@ -59,3 +61,9 @@ print("\n".join(f"{k}: {round(v, 2)}%" for k, v in videojuegos.items()))
 print("-"*60)
 
 #FASE 5 -> SUGERENCIAS DE CONTENIDOS 
+
+recomendador = Recomendador()
+recomendador.recomendar(tipo_contenido='videojuegos', puntuaciones_usuario=videojuegos, top_n=5)
+recomendador.recomendar(tipo_contenido='series', puntuaciones_usuario=cine, top_n=5)
+recomendador.recomendar(tipo_contenido='peliculas', puntuaciones_usuario=cine, top_n=5)
+recomendador.recomendar(tipo_contenido='musica', puntuaciones_usuario=musica, top_n=5)
