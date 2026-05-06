@@ -298,7 +298,7 @@ class Pipeline:
         if len(lista_encoder) == 1:
             lista_encoder = lista_encoder*4
         
-        '''
+        
         self.umbrales = {
             "E-I": 0.54,
             "S-N": 0.31,
@@ -306,7 +306,7 @@ class Pipeline:
             "J-P": 0.59
             
         }
-        '''
+        
         self.texto = texto
         self.modelos = {}
         self.embedding = {}
@@ -341,13 +341,13 @@ class Pipeline:
         self.probabilidades[dimB] = prob[0][1]
 
         # Recuperamos el umbral óptimo. Si no existe, usamos 0.5 por defecto
-        #umbral = self.umbrales.get(dimension, 0.5)
+        umbral = self.umbrales.get(dimension, 0.5)
         # Aplicamos la lógica de decisión: 1 si supera el umbral, 0 si no.
-        #prediccion_binaria = 1 if p_clase_1 >= umbral else 0
+        prediccion_binaria = 1 if prob[0][1] >= umbral else 0
         print(f"Probabilidades para {dimension}: {prob}")
         
-        return [dimA,dimB][pred[0]], prob
-    
+        #return [dimA,dimB][pred[0]], prob
+        return [dimA,dimB][prediccion_binaria], prob
     def generar_predicciones(self) -> tuple[dict, str]:
         '''
         Funcion que genera la prediccion de cada dimension del texto.

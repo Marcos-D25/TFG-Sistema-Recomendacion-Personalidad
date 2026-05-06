@@ -203,8 +203,19 @@ class AgenteLlama:
         print(f"\n[DEBUG] Turno {self.turno_actual} - Instrucción aplicada: {instruccion_sigilosa}\n")
         return respuesta_modelo
 
-    def obtener_historial_usuario(self) -> list:
-        return [mensaje["content"] for mensaje in self.historial_chat if mensaje["role"] == "user"]
+    def obtener_historial(self) -> list:
+        historial = []
+        for i in range(len(self.historial_chat)):
+            if self.historial_chat[i]["role"] == "user":
+                respuesta_usuario = self.historial_chat[i]["content"].strip()
+                analisis_bot = ""
+                if i + 1 < len(self.historial_chat) and self.historial_chat[i+1]["role"] == "assistant":
+                    texto_siguiente_bot = self.historial_chat[i+1]["content"]
+                    analisis_bot = texto_siguiente_bot.split('\n')[0].strip()
+                texto_combinado = f"{respuesta_usuario}\n{analisis_bot}"
+                historial.append(texto_combinado)
+                
+        return historial
 
     def reset(self):
         self.turno_actual = 0
