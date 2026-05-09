@@ -5,6 +5,7 @@ from collections import Counter
 import pandas as pd
 import matplotlib.pyplot as plt
 from imblearn.over_sampling import ADASYN, SMOTE, BorderlineSMOTE
+from imblearn.combine import SMOTETomek
 from imblearn.under_sampling import EditedNearestNeighbours, AllKNN
 from abc import ABC, abstractmethod
 
@@ -140,7 +141,13 @@ class BalanceadorBorderlineSMOTE(Balanceador):
 
     def __str__(self):
         return "BorderlineSMOTE"
+class BalanceadorSMOTETomek(Balanceador):
+    def __init__(self, nomCarpeta: str = "dataset9K", balancear: bool = True):
+        super().__init__(nomCarpeta, balancear=balancear)
+        self.balanceador = SMOTETomek(random_state=42)
 
+    def __str__(self):
+        return "SMOTETomek"
 class BalanceadorADASYN(Balanceador):
     def __init__(self, nomCarpeta: str = "dataset9K", balancear: bool = True):
         super().__init__(nomCarpeta, balancear=balancear)

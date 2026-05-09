@@ -7,7 +7,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.svm import LinearSVC
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.neural_network import MLPClassifier
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from skorch import NeuralNetClassifier
 from xgboost import XGBClassifier
 import os
 import joblib
@@ -186,7 +189,7 @@ class LSVC(Clasificador):
                  parametros = {'loss': 'squared_hinge', 'C': 9.605448156429867,
                                 'tol': 0.0004119653918147926, 'fit_intercept': False,
                                 'random_state': 42,
-                                'class_weight':'balanced',
+                                #'class_weight':'balanced',
                                 'max_iter': 5000
                                 }):
         super().__init__(balanceador, parametros)
@@ -207,7 +210,7 @@ class LSVC(Clasificador):
                 'penalty': penalty,
                 'C': trial.suggest_float("C", 1e-4, 100.0, log=True),
                 'tol': trial.suggest_float("tol", 1e-5, 1e-1, log=True),
-                'class_weight': trial.suggest_categorical("class_weight", [None, 'balanced']),
+                #'class_weight': trial.suggest_categorical("class_weight", [None, 'balanced']),
                 'fit_intercept': trial.suggest_categorical("fit_intercept", [True, False]),
             } 
             
@@ -226,13 +229,13 @@ class LSVC(Clasificador):
             modelo = LinearSVC(**parametros)
             X_train, y_train = self.datasetEnterno[dimension]
             
-            score = cross_val_score(modelo, X_train, y_train, cv=4, scoring="f1_macro", n_jobs=-1)
+            score = cross_val_score(modelo, X_train, y_train, cv=4, scoring="f1_macro", n_jobs=1)
             return score.mean()
 
         print("[LinearSVC][EJECUCION] Iniciando Estudio Optuna...")
         estudio = optuna.create_study(direction="maximize")
         
-        estudio.optimize(objective, n_trials=50, gc_after_trial=True, n_jobs=-1)
+        estudio.optimize(objective, n_trials=50, gc_after_trial=True, n_jobs=6)
         # Re-construimos el diccionario final
         best_params = estudio.best_params.copy()
         if best_params.get("penalty") == "l1":
@@ -257,7 +260,7 @@ class LR(Clasificador):
     def __init__(self, balanceador,
                   parametros = {'penalty': None, 'C': 9.732719859279047, 
                                 'solver': 'lbfgs', 'tol': 0.00010564097578389837, 
-                                'class_weight': 'balanced',
+                                #'class_weight': 'balanced',
                                 'random_state': 42,
                                 'n_jobs': -1,
                                 'max_iter': 5000}
@@ -279,7 +282,7 @@ class LR(Clasificador):
                 'penalty': penalty,
                 'C': trial.suggest_float("C", 1e-4, 100.0, log=True), # Inverso de lambda/alpha en XGBoost
                 'tol': trial.suggest_float("tol", 1e-5, 1e-1, log=True),
-                'class_weight': trial.suggest_categorical("class_weight", [None, 'balanced']), # Equivalente a scale_pos_weight
+                #'class_weight': trial.suggest_categorical("class_weight", [None, 'balanced']), # Equivalente a scale_pos_weight
             } 
             
             # Si usamos ElasticNet, Optuna debe buscar el ratio exacto entre L1 y L2
@@ -296,13 +299,13 @@ class LR(Clasificador):
             modelo = LogisticRegression(**parametros)
             X_train, y_train = self.datasetEnterno[dimension]
             
-            score = cross_val_score(modelo, X_train, y_train, cv=4, scoring="f1_macro", n_jobs=-1)
+            score = cross_val_score(modelo, X_train, y_train, cv=4, scoring="f1_macro", n_jobs=1)
             return score.mean()
 
         print("[LogisticRegression][EJECUCION] Iniciando Estudio Optuna...")
         estudio = optuna.create_study(direction="maximize")
         
-        estudio.optimize(objective, n_trials=50, gc_after_trial=True, n_jobs=-1)
+        estudio.optimize(objective, n_trials=50, gc_after_trial=True, n_jobs=6)
 
         return estudio.best_params | configuracion
     
@@ -392,7 +395,7 @@ class DTC(Clasificador):
                 'min_samples_split': trial.suggest_int("min_samples_split", 2, 50),
                 'min_samples_leaf': trial.suggest_int("min_samples_leaf", 1, 20),
                 'max_features': trial.suggest_categorical("max_features", [None, "sqrt", "log2"]),
-                'class_weight': trial.suggest_categorical("class_weight", [None, "balanced"]),
+                #'class_weight': trial.suggest_categorical("class_weight", [None, "balanced"]),
             } 
 
             parametros = hiperparametros | configuracion
@@ -423,71 +426,87 @@ class DTC(Clasificador):
     def __str__(self):
         return "DTC"
 
+# --- DEFINICIÓN DE LA RED EN PYTORCH ---
+class MBTINet(nn.Module):
+    def __init__(self, input_dim=768, hidden_dim=256, dropout=0.2):
+        super(MBTINet, self).__init__()
+        self.red = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.ReLU(),
+            nn.Linear(hidden_dim // 2, 2)
+        )
+        
+    def forward(self, x):
+        return self.red(x)
+
 class MLPC(Clasificador):
-    def __init__(self, balanceador, 
-                 parametros = {'hidden_layer_sizes': (256, 128, 64), 'activation': 'tanh', 
-                               'solver': 'adam', 'learning_rate': 'constant', 
-                               'learning_rate_init': 0.001,
-                                'early_stopping': True,
-                                'max_iter':6000,
-                                'random_state':42}
-                                ):
+    def __init__(self, balanceador, parametros=None):
         super().__init__(balanceador, parametros)
-    
-    def busqueda_hiperparametros(self,dimension:str):
-        configuracion = {
-           'early_stopping': True,
-           'max_iter': 2000, # Límite de seguridad
-           'random_state': 42 
-        }
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        
+        for dim in ["E-I", "S-N", "T-F", "J-P"]:
+            X, y = self.datasetEnterno[dim]
+            self.datasetEnterno[dim] = (X.astype(np.float32), np.array(y).astype(np.int64))
 
+    def busqueda_hiperparametros(self, dimension: str):
         def objective(trial):
+            hidden_dim = trial.suggest_categorical("hidden_dim", [128, 256, 512])
+            lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
             
-            solver = trial.suggest_categorical("solver", ['adam', 'sgd'])
+            batch_size = trial.suggest_categorical("batch_size", [256, 512, 1024])
             
-            hiperparametros = {
-                # Exploramos arquitecturas desde 1 capa ancha hasta 3 capas embudo (Deep)
-                "hidden_layer_sizes": trial.suggest_categorical("hidden_layer_sizes", [
-                    (128,), (256,), (512,), 
-                    (256, 128), (512, 256), 
-                    (256, 128, 64), (512, 256, 128)
-                ]),
-                "activation": trial.suggest_categorical("activation", ['relu', 'tanh', 'logistic']),
-                "solver": solver,
-                "alpha": trial.suggest_float("alpha", 1e-5, 1e-1, log=True), # Regularización L2
-                "learning_rate_init": trial.suggest_float("learning_rate_init", 1e-5, 1e-1, log=True),
-                "batch_size": trial.suggest_categorical("batch_size", [32, 64, 128, 256, "auto"])
-            } 
-            
-            # Parámetros exclusivos del optimizador SGD
-            if solver == 'sgd':
-                hiperparametros["learning_rate"] = trial.suggest_categorical("learning_rate", ['constant', 'invscaling', 'adaptive'])
-                hiperparametros["momentum"] = trial.suggest_float("momentum", 0.5, 0.99) 
+            net = NeuralNetClassifier(
+                module=MBTINet,
+                module__input_dim=768,
+                module__hidden_dim=hidden_dim,
+                criterion=nn.CrossEntropyLoss,
+                optimizer=optim.Adam,
+                lr=lr,
+                max_epochs=20,
+                batch_size=batch_size,
+                device=self.device, 
+                train_split=None,  
+                verbose=0          
+            )
 
-            parametros = hiperparametros | configuracion
 
-            # Instanciamos el modelo con los parámetros sugeridos por Optuna
-            modelo = MLPClassifier(**parametros)
             X_train, y_train = self.datasetEnterno[dimension]
-            
-            score = cross_val_score(modelo, X_train, y_train, cv=4, scoring="f1_macro", n_jobs=-1)
+
+            score = cross_val_score(net, X_train, y_train, cv=4, scoring="f1_macro", n_jobs=1)
             return score.mean()
 
-        print("[MLPClassifier][EJECUCION] Iniciando Estudio Optuna...")
+        print(f"[MLPC-GPU][EJECUCION] Iniciando Optuna en {self.device.upper()} para {dimension}...")
         estudio = optuna.create_study(direction="maximize")
         
-        estudio.optimize(objective, n_trials=50, gc_after_trial=True, n_jobs=-1)
+        estudio.optimize(objective, n_trials=50, gc_after_trial=True, n_jobs=1)
 
-        return estudio.best_params | configuracion
-    
-    def entrenar_dimension(self, parametros = None):
+        return estudio.best_params
+
+    def entrenar_dimension(self, parametros=None):
         dimension = parametros["dimension"]
-        del parametros["dimension"]
+        
+        h_dim = parametros.get("hidden_dim", 256)
+        lr = parametros.get("lr", 0.001)
+        b_size = parametros.get("batch_size", 256)
 
         X_train, y_train = self.datasetEnterno[dimension]
 
-        self.modelos[dimension] = MLPClassifier(**parametros).fit(X_train, y_train)
-        print(f"\t[MLPClassifier][INFO] Modelo {dimension} entrenado.")
+        net = NeuralNetClassifier(
+            module=MBTINet,
+            module__input_dim=768,
+            module__hidden_dim=h_dim,
+            lr=lr,
+            batch_size=b_size,
+            device=self.device,
+            max_epochs=50,
+            verbose=0
+        )
+        
+        self.modelos[dimension] = net.fit(X_train, y_train)
+        print(f"\t[MLPC][INFO] Modelo {dimension} entrenado.")
 
     def __str__(self):
         return "MLPC"

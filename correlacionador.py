@@ -142,10 +142,8 @@ class Correlacionador:
 
         res = self.corr_CINE @ ocean_centrado
 
-
-        # Al estar normalizado, usamos temperaturas y bias más bajos
-        temp_cine = 7  
-        bias_cine = 1.8  # Bias alto asegura que el top 1 roce el 90%
+        temp_cine = 4.5  
+        bias_cine = -.2  
         res = 1 / (1 + np.exp(-(res * temp_cine + bias_cine)))
         
         return dict(zip(self.nombres_generos, [float(np.round(x * 100, 2)) for x in res]))
@@ -161,7 +159,7 @@ class Correlacionador:
             
         # Regresión Lineal: Base + (Matriz @ OCEAN_en_escala_100)
         ocean_100 = self.OCEAN.flatten() * 100
-        amplificador = 3.0
+        amplificador = .8
         res = ((self.corr_JUEGOS @ ocean_100) * amplificador) + self.bases_juegos
         
         # Recortamos los valores para que el score nunca sobrepase 100 ni sea negativo
@@ -191,8 +189,8 @@ class Correlacionador:
             res_final[i] = res_especifica[i] + res_general[macro_idx]
                 
                 
-        temp_musica = 7
-        bias_musica = 1.8 
+        temp_musica = 4.5
+        bias_musica = -.2 
         res_final = 1 / (1 + np.exp(-(res_final * temp_musica + bias_musica)))
         
         return dict(zip(self.nombres_musica_1, [float(np.round(x * 100, 2)) for x in res_final]))

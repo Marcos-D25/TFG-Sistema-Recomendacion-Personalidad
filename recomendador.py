@@ -7,8 +7,8 @@ class Recomendador:
         self.dataset_peliculas = pd.read_csv('dataset_peliculas.csv')
         self.dataset_musica = pd.read_csv('dataset_musica.csv')
         self.dataset_videojuegos = pd.read_csv('dataset_juegos.csv')
-        self.PESO_AFINIDAD = 0.60
-        self.PESO_SCORE = 0.40
+        self.PESO_AFINIDAD = 0.50
+        self.PESO_SCORE = 0.50
     def get_top_puntuaciones(self, tipo_contenido, top_n=5) -> list:
         '''
             Funcion que dado un diccionario de puntuaciones de géneros, devuelve el top N de géneros ordenados por puntuación.
@@ -45,7 +45,7 @@ class Recomendador:
             :param puntuaciones_usuario: Diccionario con los géneros y sus puntuaciones por parte del usuario
             :param top_n: Número de géneros principales del usuario a considerar para la afinidad
         """
-        top_3_generos = self.get_top_puntuaciones(puntuaciones_usuario, top_n)
+        top_generos = self.get_top_puntuaciones(puntuaciones_usuario, top_n)
 
         match tipo_contenido:
             case 'videojuegos': 
@@ -63,23 +63,30 @@ class Recomendador:
             case _: 
                 raise ValueError("Tipo de contenido no válido. Elige entre 'videojuegos', 'series', 'peliculas' o 'musica'.")
         # 3.1 Calcular la afinidad bruta (0 a 3)
-        df['Afinidad_Bruta'] = df['genre'].apply(lambda x: self.calcular_afinidad(x, top_3_generos))
+        df['Afinidad_Bruta'] = df['genre'].apply(lambda x: self.calcular_afinidad(x, top_generos))
 
         # 3.2 Filtrar la basura: Solo queremos juegos que tengan al menos 1 coincidencia
         df_recomendados = df[df['Afinidad_Bruta'] > 0].copy()
 
         # 3.3 Normalizar la Afinidad a escala 0-100 (El máximo es 3 coincidencias)
-        df_recomendados['Afinidad_Norm'] = (df_recomendados['Afinidad_Bruta'] / 3) * 100
+        df_recomendados['Afinidad_Norm'] = (df_recomendados['Afinidad_Bruta'] / top_n) * 100
 
         df_recomendados['Puntuacion_Final'] = (df_recomendados['Afinidad_Norm'] * self.PESO_AFINIDAD) + (df_recomendados['score'] * self.PESO_SCORE)
 
-        # 3.5 Ordenar por la Puntuación Final de mayor a menor y sacar el Top 5
-        df_recomendados = df_recomendados.sort_values(by='Puntuacion_Final', ascending=False).head(5)
+        # 3.5 Ordenar por la Puntuación Final de mayor a menor y coger una "Piscina" de los 20 mejores
+        pool_recomendaciones = df_recomendados.sort_values(by='Puntuacion_Final', ascending=False).head(40)
 
-        self.mostrar_recomendaciones(df_recomendados, tipo_contenido, col)
+        # 3.6 Seleccionar 5 al azar de esa piscina (o menos si el DataFrame tiene menos de 5)
+        cantidad_a_mostrar = min(top_n, len(pool_recomendaciones))
+        
+        # El .sample() hace la magia de la aleatoriedad. 
+        # Luego le volvemos a hacer sort_values para que al imprimirlos por pantalla salgan ordenados de mejor a peor nota.
+        df_recomendados = pool_recomendaciones.sample(n=cantidad_a_mostrar).sort_values(by='Puntuacion_Final', ascending=False)
+
+        self.mostrar_recomendaciones(df_recomendados, tipo_contenido, col, top_n)
 
     
-    def mostrar_recomendaciones(self, df_recomendados, tipo_contenido:str, col:str = None):
+    def mostrar_recomendaciones(self, df_recomendados, tipo_contenido:str, col:str = None, top_n:int = 5):
         """
             Función que muestra las recomendaciones.
             :param df_recomendados: DataFrame con las recomendaciones ya ordenadas por puntuación final
@@ -91,7 +98,7 @@ class Recomendador:
             print(f"- {fila['name']}")
             if col and col in fila:
                 print(f"  └ {col.capitalize()}: {fila[col]}")
-            print(f"  └ Géneros: {fila['genre']} | Coincidencias: {fila['Afinidad_Bruta']}/3")
+            print(f"  └ Géneros: {fila['genre']} | Coincidencias: {fila['Afinidad_Bruta']}/{top_n}")
             print(f"  └ Nota: {fila['score']}/100 | Match Total: {fila['Puntuacion_Final']:.1f} pts\n")
 
 

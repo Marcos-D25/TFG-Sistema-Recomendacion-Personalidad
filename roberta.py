@@ -8,6 +8,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 from sklearn.utils.class_weight import compute_class_weight
 import warnings
+from transformers import EarlyStoppingCallback
 
 #SILENCIAR WARNINGS
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -109,23 +110,26 @@ class FineTunnerRoberta:
             num_labels=2
         ).to('cuda')
 
+        for param in modelo.roberta.encoder.layer[:8].parameters():
+            param.requires_grad = False
+
         training_args = TrainingArguments(
             output_dir=self.salida_modelo,
-            evaluation_strategy="epoch",
+            eval_strategy="epoch",
             save_strategy="epoch", 
             learning_rate=2e-5,
             
-            per_device_train_batch_size=24, #Numero de textos que procesa en un batch (cambiar si satura la vram)
-            per_device_eval_batch_size=24,  
+            per_device_train_batch_size=48, #Numero de textos que procesa en un batch (cambiar si satura la vram)
+            per_device_eval_batch_size=48,  
             dataloader_num_workers=0,          
             dataloader_pin_memory=True,
             optim="adamw_torch_fused",
-            num_train_epochs=3,
+            num_train_epochs=10,
             weight_decay=0.01,
-            fp16=False,#Ya no uso la 4060ti, cambia la arquitectura
+            fp16=False,
             bf16=True,
             lr_scheduler_type="cosine",
-            warmup_ratio=0.1, 
+            warmup_steps=0.1, 
             load_best_model_at_end=True,
             metric_for_best_model="f1_macro",
         )
@@ -136,8 +140,11 @@ class FineTunnerRoberta:
             args=training_args,
             train_dataset=self.train_dataset[dimension],
             eval_dataset=self.val_dataset[dimension],
-            compute_metrics=compute_metrics
+            compute_metrics=compute_metrics,
+            callbacks=[EarlyStoppingCallback(early_stopping_patience=2)]
         )
+
+        
 
         trainer.train()
 

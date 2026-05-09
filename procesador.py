@@ -5,6 +5,11 @@ import re
 from numpy import ndarray
 from transformers import AutoTokenizer, AutoModel, BatchEncoding
 import torch
+import transformers
+
+# Suprimir logs de carga de modelos
+transformers.logging.set_verbosity_error()
+transformers.utils.logging.disable_progress_bar()
 
 #Esta clase se encarga de limpiar, tokenizar y realizar el embedding del dataset a partir de un modelo pre-entrenado
 class Preprocesador:
@@ -132,11 +137,11 @@ class Preprocesador:
         
         token_embedding = salida.last_hidden_state #Recuperamos la salida de la última capa oculta (embedding de cada token)
         
-        chunk_embeddings = self.aplicarMeanPooling(token_embedding, attention_mask) #Aplicamos mean pooling a nivel de fragmento para obtener un vector por cada fragmento
-
-        embedding_final = torch.mean(chunk_embeddings, dim=0) #Hacemos la media de los vectores de cada fragmento para obtener un solo vector que represente todo el post
-
-        return embedding_final.cpu().numpy().flatten() #Bajamos el vector de la VRAM a la CPU y lo convertimos de una matriz (1, 768) a un vector (768,)
+        #chunk_embeddings = self.aplicarMeanPooling(token_embedding, attention_mask) #Aplicamos mean pooling a nivel de fragmento para obtener un vector por cada fragmento
+        chunk_embeddings = token_embedding[:, 0, :] #En lugar de aplicar mean pooling, tomamos el embedding del token CLS (primer token) de cada fragmento, que es una técnica común para obtener un vector representativo de todo el fragmento
+        #embedding_final = torch.mean(chunk_embeddings, dim=0) #Hacemos la media de los vectores de cada fragmento para obtener un solo vector que represente todo el post
+        embeddin_final, _ = torch.max(chunk_embeddings, dim=0) #En lugar de hacer la media, hacemos la max pooling para obtener el vector final del post. Esto puede ayudar a capturar las características más importantes del post, ya que toma el valor máximo de cada dimensión entre los fragmentos. 
+        return embeddin_final.cpu().numpy().flatten() #Bajamos el vector de la VRAM a la CPU y lo convertimos de una matriz (1, 768) a un vector (768,)
 
     def procesar_dataset(self, carpeta_dest="dataset9K", nom_archivo="MBTI_procesado") -> None:
         '''

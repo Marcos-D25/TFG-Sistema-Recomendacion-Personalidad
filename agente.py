@@ -200,7 +200,7 @@ class AgenteLlama:
         respuesta_modelo = self._generar_respuesta_segura(historial_temporal)
         self.historial_chat.append({"role": "assistant", "content": respuesta_modelo})
         self.turno_actual += 1
-        print(f"\n[DEBUG] Turno {self.turno_actual} - Instrucción aplicada: {instruccion_sigilosa}\n")
+        #print(f"\n[DEBUG] Turno {self.turno_actual} - Instrucción aplicada: {instruccion_sigilosa}\n")
         return respuesta_modelo
 
     def obtener_historial(self) -> list:
