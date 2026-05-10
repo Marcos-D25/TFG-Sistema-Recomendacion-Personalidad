@@ -37,6 +37,59 @@ class Recomendador:
         coincidencias = set(generos_juego).intersection(set(top_usuario))
         return len(coincidencias)
 
+    def recomendar_online(self, tipo_contenido:str, puntuaciones_usuario:dict, top_n=5):
+        """
+        Genera recomendaciones y devuelve una lista de diccionarios (JSON ready).
+        """
+        top_generos = self.get_top_puntuaciones(puntuaciones_usuario, top_n)
+
+        match tipo_contenido:
+            case 'videojuegos': 
+                df = self.dataset_videojuegos
+            case 'series': 
+                df = self.dataset_series
+            case 'peliculas': 
+                df = self.dataset_peliculas
+            case 'musica': 
+                df = self.dataset_musica
+            case _: 
+                raise ValueError("Tipo de contenido no válido.")
+
+        # Cálculo de afinidad y puntuaciones
+        df['Afinidad_Bruta'] = df['genre'].apply(lambda x: self.calcular_afinidad(x, top_generos))
+        df_recomendados = df[df['Afinidad_Bruta'] > 0].copy()
+        
+        if df_recomendados.empty:
+            return []
+
+        df_recomendados['Afinidad_Norm'] = (df_recomendados['Afinidad_Bruta'] / top_n) * 100
+        df_recomendados['Puntuacion_Final'] = (df_recomendados['Afinidad_Norm'] * self.PESO_AFINIDAD) + (df_recomendados['score'] * self.PESO_SCORE)
+
+        # Selección de la piscina y muestra aleatoria
+        pool = df_recomendados.sort_values(by='Puntuacion_Final', ascending=False).head(40)
+        cantidad_a_mostrar = min(top_n, len(pool))
+        df_final = pool.sample(n=cantidad_a_mostrar).sort_values(by='Puntuacion_Final', ascending=False)
+
+        # Construcción del JSON de salida
+        resultados = []
+        for _, fila in df_final.iterrows():
+            item = {
+                "name": fila['name'],
+                "genre": fila['genre']
+            }
+            
+            # Campos específicos según el tipo de contenido
+            if tipo_contenido == 'musica':
+                item["artist"] = fila.get('Artist', 'Desconocido')
+            elif tipo_contenido in ['series', 'peliculas']:
+                item["overview"] = fila.get('overview', 'Sin descripción disponible.')
+            
+            resultados.append(item)
+
+        return resultados
+
+
+
     def recomendar(self, tipo_contenido:str, puntuaciones_usuario:dict, top_n=5):
         """
             Funcion principal que genera recomendaciones basadas en las puntuaciones del usuario para un tipo de contenido específico.

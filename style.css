@@ -1,0 +1,135 @@
+:root {
+    /* Fondo mucho más claro (Gris Pizarra Azulado) */
+    --cyber-black: #23272e; 
+    --cyber-panel: #2b313a;
+    --neon-cyan: #00f3ff;
+    --neon-magenta: #ff00ff;
+    --neon-green: #39ff14;
+    --neon-blue: #4d4dff;
+    --neon-red: #ff3131;
+    --neon-yellow: #fff01f;
+    --neon-purple: #bc13fe;
+}
+
+body {
+    background-color: var(--cyber-black);
+    color: #ffffff;
+    /* Fuente Exo 2: mucho más legible y clara */
+    font-family: 'Exo 2', sans-serif; 
+    font-size: 18px; /* Tamaño base aumentado */
+    background-image: linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 30px 30px;
+}
+
+/* Títulos con Michroma: estilo futurista pero más sólido */
+h1, h2, h3, h4, h5, .nav-link, .terminal-header { 
+    font-family: 'Michroma', sans-serif; 
+    letter-spacing: 1px;
+}
+
+.terminal-card {
+    background: var(--cyber-panel);
+    border: 2px solid var(--neon-cyan);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    width: 95%; 
+    max-width: 1100px; /* Un poco más ancho */
+}
+
+.terminal-header { 
+    background: var(--neon-cyan); 
+    color: #000; 
+    padding: 12px; 
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.chat-box {
+    height: 650px; /* Más alto aún */
+    padding: 30px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* MENSAJES: Tamaño mayor y mejor contraste */
+.msg { 
+    max-width: 85%; 
+    padding: 18px; 
+    margin-bottom: 25px; 
+    font-family: 'Exo 2', sans-serif; /* Cambiado a Exo 2 para leer mejor */
+    font-size: 1.15rem; /* Tamaño de letra del chat aumentado */
+    line-height: 1.5;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.msg-bot { 
+    background: rgba(0, 243, 255, 0.15); 
+    border: 1px solid var(--neon-cyan);
+    color: #ffffff; 
+    text-shadow: 0 0 2px rgba(0, 243, 255, 0.5);
+}
+
+.msg-user { 
+    background: rgba(255, 0, 255, 0.15); 
+    border: 1px solid var(--neon-magenta);
+    color: #ffffff; 
+}
+
+.cyber-input { 
+    background: #1a1d23; 
+    border: none; 
+    border-top: 2px solid var(--neon-cyan); 
+    padding: 25px; 
+    color: white; 
+    font-size: 1.2rem;
+    flex-grow: 1; 
+    outline: none; 
+}
+
+/* PESTAÑAS: Más grandes y legibles */
+.custom-nav-tabs .nav-link { 
+    color: #ccc; 
+    margin: 8px; 
+    padding: 15px 25px; 
+    font-size: 1rem; 
+    background: rgba(255,255,255,0.05);
+}
+
+/* Colores de pestañas activas (se mantienen tus lógicas de color) */
+.tab-chat.active { background: #555 !important; color: white !important; }
+.tab-mbti.active { background: var(--neon-blue) !important; color: white !important; }
+.tab-ocean.active { background: var(--neon-cyan) !important; color: black !important; }
+.tab-series.active { background: var(--neon-green) !important; color: black !important; }
+.tab-pelis.active { background: var(--neon-red) !important; color: white !important; }
+.tab-musica.active { background: var(--neon-yellow) !important; color: black !important; }
+.tab-juegos.active { background: var(--neon-purple) !important; color: white !important; }
+
+/* RESULTADOS: Texto de descripción MBTI más grande */
+.mbti-huge { 
+    font-size: 5.5rem; 
+    color: var(--neon-cyan); 
+    text-shadow: 0 0 20px var(--neon-cyan);
+    margin-top: 20px; 
+}
+
+.mbti-text {
+    font-size: 1.4rem; /* Descripción de personalidad más grande */
+    line-height: 1.6;
+    color: #ffffff;
+}
+
+/* OCEAN: Filas con texto claro */
+.ocean-val { font-size: 1.5rem; color: var(--neon-cyan); }
+.ocean-desc { font-size: 1.1rem; color: #ffffff; opacity: 1; font-weight: 400; }
+
+/* RECOMENDACIONES: Estructura de filas */
+.rec-item-title { font-size: 1.4rem; color: var(--neon-cyan); }
+.rec-item-genre { font-size: 1rem; color: var(--neon-magenta); }
+.rec-item-desc { font-size: 1.1rem; color: #ffffff; opacity: 1; }
+
+.rec-row {
+    background: rgba(255,255,255,0.03);
+    padding: 20px;
+    border-radius: 4px;
+}
