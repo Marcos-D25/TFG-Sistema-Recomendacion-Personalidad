@@ -1,6 +1,6 @@
 :root {
     /* Paleta más profunda y limpia */
-    --cyber-bg: #0d1117; 
+    --cyber-bg: #161f20; 
     --cyber-panel: rgba(22, 27, 34, 0.6); /* Transparente para efecto cristal */
     --neon-cyan: #00e5ff;
     --neon-magenta: #ff00ff;
@@ -36,7 +36,7 @@ h3, h4, h5, .nav-link, .terminal-header {
 
 /* CONTENEDORES (Efecto Cristal Minimalista) */
 .terminal-card {
-    background: var(--cyber-panel);
+    background: #0b3841;
     backdrop-filter: blur(12px); /* Efecto cristal */
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(0, 229, 255, 0.15); /* Borde muy sutil */
@@ -102,11 +102,11 @@ h3, h4, h5, .nav-link, .terminal-header {
 .cyber-input:focus { background: rgba(0, 229, 255, 0.02); }
 
 .cyber-button { 
-    background: transparent; 
+    background: var(--cyber-panel); 
     color: var(--neon-cyan);
     border: none;
-    border-top: 1px solid rgba(0, 229, 255, 0.2);
-    border-left: 1px solid rgba(0, 229, 255, 0.2);
+    /*border-top: 1px solid rgba(0, 229, 255, 0.2);*/
+    /*border-left: 1px solid rgba(0, 229, 255, 0.2);*/
     padding: 0 30px; 
     font-weight: 600; 
     text-transform: uppercase;
@@ -118,11 +118,11 @@ h3, h4, h5, .nav-link, .terminal-header {
 }
 
 .cyber-button-alt { 
-    background: transparent; 
+    background: var(--cyber-panel); 
     color: var(--neon-yellow); 
     border: none; 
-    border-top: 1px solid rgba(0, 229, 255, 0.2);
-    border-left: 1px solid rgba(0, 229, 255, 0.2);
+    /*border-top: 1px solid rgba(0, 229, 255, 0.2);
+    border-left: 1px solid rgba(0, 229, 255, 0.2);*/
     padding: 0 20px; 
     font-size: 0.8rem; 
     transition: all 0.3s ease;
@@ -160,7 +160,7 @@ h3, h4, h5, .nav-link, .terminal-header {
 
 /* RESULTADOS MBTI */
 .mbti-huge { 
-    font-size: 5rem; 
+    font-size: 2rem; 
     color: transparent; 
     -webkit-text-stroke: 1px var(--neon-cyan); /* Efecto holográfico */
     text-shadow: 0 0 20px rgba(0, 229, 255, 0.2);
