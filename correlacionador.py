@@ -23,6 +23,7 @@ class Correlacionador:
             [-0.02,  0.02,  0.01,  0.00, -0.41,  0.28,  0.05, -0.06],
             [-0.30,  0.31,  0.15, -0.14, -0.13,  0.12,  0.07, -0.07]
         ]
+        self.nombres_ocean = ["Openness (Apertura)", "Conscientiousness (Responsabilidad)", "Extraversion (Extraversión)", "Agreeableness (Amabilidad)", "Neuroticism (Neuroticismo)"]
 
         self.corr_CINE = [
             #   O     C     E      A     N
@@ -122,7 +123,7 @@ class Correlacionador:
 
         return dict(
                 zip(
-                    ['Openness', 'Conscientiousness', 'Extraversion', 'Agreeableness', 'Neuroticism'], 
+                    self.nombres_ocean, 
                     [float(v * 100) for v in self.OCEAN.reshape(1, -1)[0]]
                 )
             )

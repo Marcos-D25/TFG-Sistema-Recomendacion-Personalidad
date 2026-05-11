@@ -1,135 +1,206 @@
 :root {
-    /* Fondo mucho más claro (Gris Pizarra Azulado) */
-    --cyber-black: #23272e; 
-    --cyber-panel: #2b313a;
-    --neon-cyan: #00f3ff;
+    /* Paleta más profunda y limpia */
+    --cyber-bg: #0d1117; 
+    --cyber-panel: rgba(22, 27, 34, 0.6); /* Transparente para efecto cristal */
+    --neon-cyan: #00e5ff;
     --neon-magenta: #ff00ff;
     --neon-green: #39ff14;
     --neon-blue: #4d4dff;
     --neon-red: #ff3131;
     --neon-yellow: #fff01f;
     --neon-purple: #bc13fe;
+    --text-main: #c9d1d9;
+    --text-muted: #8b949e;
 }
 
 body {
-    background-color: var(--cyber-black);
-    color: #ffffff;
-    /* Fuente Exo 2: mucho más legible y clara */
+    background-color: var(--cyber-bg);
+    color: var(--text-main);
     font-family: 'Exo 2', sans-serif; 
-    font-size: 18px; /* Tamaño base aumentado */
-    background-image: linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-                      linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-    background-size: 30px 30px;
+    font-size: 17px; 
+    /* Fondo limpio con un sutil brillo superior en lugar de cuadrícula pesada */
+    background-image: radial-gradient(circle at 50% 0%, rgba(0, 229, 255, 0.08) 0%, transparent 50%);
+    background-attachment: fixed;
 }
 
-/* Títulos con Michroma: estilo futurista pero más sólido */
-h1, h2, h3, h4, h5, .nav-link, .terminal-header { 
+/* Tipografía jerárquica más limpia */
+h1, h2, .glitch-text { 
     font-family: 'Michroma', sans-serif; 
+    letter-spacing: 2px;
+}
+h3, h4, h5, .nav-link, .terminal-header {
+    font-family: 'Exo 2', sans-serif;
+    font-weight: 600;
     letter-spacing: 1px;
 }
 
+/* CONTENEDORES (Efecto Cristal Minimalista) */
 .terminal-card {
     background: var(--cyber-panel);
-    border: 2px solid var(--neon-cyan);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(12px); /* Efecto cristal */
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 229, 255, 0.15); /* Borde muy sutil */
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     width: 95%; 
-    max-width: 1100px; /* Un poco más ancho */
+    max-width: 1100px; 
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 .terminal-header { 
-    background: var(--neon-cyan); 
-    color: #000; 
-    padding: 12px; 
-    font-weight: bold;
-    font-size: 1.1rem;
+    background: rgba(0, 229, 255, 0.05); 
+    color: var(--neon-cyan); 
+    border-bottom: 1px solid rgba(0, 229, 255, 0.15);
+    padding: 15px 20px; 
+    font-size: 0.9rem;
+    text-transform: uppercase;
 }
 
+/* CHATBOX */
 .chat-box {
-    height: 650px; /* Más alto aún */
+    height: 600px; 
     padding: 30px;
-    background: rgba(0, 0, 0, 0.2);
+    background: transparent; /* Quitamos las líneas de fondo del chat */
 }
 
-/* MENSAJES: Tamaño mayor y mejor contraste */
 .msg { 
-    max-width: 85%; 
-    padding: 18px; 
-    margin-bottom: 25px; 
-    font-family: 'Exo 2', sans-serif; /* Cambiado a Exo 2 para leer mejor */
-    font-size: 1.15rem; /* Tamaño de letra del chat aumentado */
+    max-width: 80%; 
+    padding: 15px 20px; 
+    margin-bottom: 20px; 
+    font-size: 1.05rem; 
     line-height: 1.5;
     border-radius: 8px;
     white-space: pre-wrap;
     word-wrap: break-word;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }
 
 .msg-bot { 
-    background: rgba(0, 243, 255, 0.15); 
-    border: 1px solid var(--neon-cyan);
+    background: rgba(0, 229, 255, 0.05); 
+    border-left: 3px solid var(--neon-cyan);
     color: #ffffff; 
-    text-shadow: 0 0 2px rgba(0, 243, 255, 0.5);
 }
 
 .msg-user { 
-    background: rgba(255, 0, 255, 0.15); 
-    border: 1px solid var(--neon-magenta);
+    background: rgba(255, 0, 255, 0.05); 
+    border-right: 3px solid var(--neon-magenta);
     color: #ffffff; 
 }
 
+/* INPUT TERMINAL */
 .cyber-input { 
-    background: #1a1d23; 
+    background: rgba(0,0,0,0.2); 
     border: none; 
-    border-top: 2px solid var(--neon-cyan); 
-    padding: 25px; 
+    border-top: 1px solid rgba(0, 229, 255, 0.2); 
+    padding: 20px 25px; 
     color: white; 
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     flex-grow: 1; 
     outline: none; 
+    transition: background 0.3s;
+}
+.cyber-input:focus { background: rgba(0, 229, 255, 0.02); }
+
+.cyber-button { 
+    background: transparent; 
+    color: var(--neon-cyan);
+    border: none;
+    border-top: 1px solid rgba(0, 229, 255, 0.2);
+    border-left: 1px solid rgba(0, 229, 255, 0.2);
+    padding: 0 30px; 
+    font-weight: 600; 
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+}
+.cyber-button:hover { 
+    background: rgba(0, 229, 255, 0.1); 
+    box-shadow: inset 0 0 10px rgba(0, 229, 255, 0.2);
 }
 
-/* PESTAÑAS: Más grandes y legibles */
+.cyber-button-alt { 
+    background: transparent; 
+    color: var(--neon-yellow); 
+    border: none; 
+    border-top: 1px solid rgba(0, 229, 255, 0.2);
+    border-left: 1px solid rgba(0, 229, 255, 0.2);
+    padding: 0 20px; 
+    font-size: 0.8rem; 
+    transition: all 0.3s ease;
+}
+.cyber-button-alt:hover { background: rgba(255, 240, 31, 0.1); }
+
+/* PESTAÑAS (Estilo Minimalista Underline) */
+.custom-nav-tabs {
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    margin-bottom: 30px !important;
+}
+
 .custom-nav-tabs .nav-link { 
-    color: #ccc; 
-    margin: 8px; 
-    padding: 15px 25px; 
-    font-size: 1rem; 
-    background: rgba(255,255,255,0.05);
+    color: var(--text-muted); 
+    margin: 0 5px; 
+    padding: 12px 20px; 
+    font-size: 0.95rem; 
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent; /* Preparado para iluminarse */
+    border-radius: 0;
+    transition: all 0.3s ease;
 }
 
-/* Colores de pestañas activas (se mantienen tus lógicas de color) */
-.tab-chat.active { background: #555 !important; color: white !important; }
-.tab-mbti.active { background: var(--neon-blue) !important; color: white !important; }
-.tab-ocean.active { background: var(--neon-cyan) !important; color: black !important; }
-.tab-series.active { background: var(--neon-green) !important; color: black !important; }
-.tab-pelis.active { background: var(--neon-red) !important; color: white !important; }
-.tab-musica.active { background: var(--neon-yellow) !important; color: black !important; }
-.tab-juegos.active { background: var(--neon-purple) !important; color: white !important; }
+.custom-nav-tabs .nav-link:hover { color: #fff; background: rgba(255,255,255,0.02); }
 
-/* RESULTADOS: Texto de descripción MBTI más grande */
+/* Colores de pestañas activas (Línea inferior en lugar de fondo sólido) */
+.tab-chat.active { color: #fff !important; border-bottom: 2px solid #888 !important; text-shadow: 0 0 10px rgba(136,136,136,0.5); }
+.tab-mbti.active { color: #fff !important; border-bottom: 2px solid var(--neon-blue) !important; text-shadow: 0 0 10px rgba(77,77,255,0.5); }
+.tab-ocean.active { color: #fff !important; border-bottom: 2px solid var(--neon-cyan) !important; text-shadow: 0 0 10px rgba(0,229,255,0.5); }
+.tab-series.active { color: #fff !important; border-bottom: 2px solid var(--neon-green) !important; text-shadow: 0 0 10px rgba(57,255,20,0.5); }
+.tab-pelis.active { color: #fff !important; border-bottom: 2px solid var(--neon-red) !important; text-shadow: 0 0 10px rgba(255,49,49,0.5); }
+.tab-musica.active { color: #fff !important; border-bottom: 2px solid var(--neon-yellow) !important; text-shadow: 0 0 10px rgba(255,240,31,0.5); }
+.tab-juegos.active { color: #fff !important; border-bottom: 2px solid var(--neon-purple) !important; text-shadow: 0 0 10px rgba(188,19,254,0.5); }
+
+/* RESULTADOS MBTI */
 .mbti-huge { 
-    font-size: 5.5rem; 
-    color: var(--neon-cyan); 
-    text-shadow: 0 0 20px var(--neon-cyan);
-    margin-top: 20px; 
+    font-size: 5rem; 
+    color: transparent; 
+    -webkit-text-stroke: 1px var(--neon-cyan); /* Efecto holográfico */
+    text-shadow: 0 0 20px rgba(0, 229, 255, 0.2);
+    margin-top: 10px; 
 }
-
 .mbti-text {
-    font-size: 1.4rem; /* Descripción de personalidad más grande */
-    line-height: 1.6;
-    color: #ffffff;
+    font-size: 1.15rem; 
+    line-height: 1.7;
+    color: var(--text-main);
+    font-weight: 300;
 }
 
-/* OCEAN: Filas con texto claro */
-.ocean-val { font-size: 1.5rem; color: var(--neon-cyan); }
-.ocean-desc { font-size: 1.1rem; color: #ffffff; opacity: 1; font-weight: 400; }
+/* OCEAN: Filas */
+.ocean-list-wrapper { padding: 10px; }
+.ocean-row { border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 20px; }
+.ocean-dim { color: var(--text-main); font-family: 'Exo 2'; font-weight: 600; font-size: 1rem; text-transform: uppercase; letter-spacing: 1px;}
+.ocean-val { font-size: 1.3rem; color: var(--neon-cyan); font-family: 'Michroma'; }
+.ocean-desc { font-size: 0.95rem; color: var(--text-muted); line-height: 1.5; font-weight: 300; }
 
-/* RECOMENDACIONES: Estructura de filas */
-.rec-item-title { font-size: 1.4rem; color: var(--neon-cyan); }
-.rec-item-genre { font-size: 1rem; color: var(--neon-magenta); }
-.rec-item-desc { font-size: 1.1rem; color: #ffffff; opacity: 1; }
+.cyber-bar-container { height: 4px; background: rgba(255, 255, 255, 0.05); border-radius: 2px; overflow: hidden; margin-top: 10px; }
+.cyber-bar-fill { height: 100%; background: var(--neon-cyan); box-shadow: 0 0 10px var(--neon-cyan); }
 
+/* RECOMENDACIONES: Estructura de filas minimalista */
 .rec-row {
-    background: rgba(255,255,255,0.03);
-    padding: 20px;
-    border-radius: 4px;
+    background: transparent;
+    padding: 15px 20px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.02);
+    transition: all 0.3s ease;
 }
+.rec-row:hover {
+    background: rgba(255,255,255,0.02);
+    border-color: rgba(255,255,255,0.08);
+    transform: translateX(5px);
+}
+
+.rec-item-title { font-size: 1.25rem; color: #fff; font-weight: 600; letter-spacing: 0.5px; }
+.rec-item-genre { font-size: 0.85rem; color: var(--neon-magenta); opacity: 0.8;}
+.rec-item-desc { font-size: 0.95rem; color: var(--text-muted); font-weight: 300; }
+
+/* Efectos sutiles al hacer hover en juegos */
+#juegos-list .rec-row:hover { border-left: 2px solid var(--neon-purple); background: rgba(188, 19, 254, 0.03); border-color: rgba(188, 19, 254, 0.1); }
+#juegos-list .rec-item-title { color: #fff; }
