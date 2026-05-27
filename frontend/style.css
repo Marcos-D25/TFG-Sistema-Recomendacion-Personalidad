@@ -60,7 +60,28 @@ h3, h4, h5, .nav-link, .terminal-header {
 .chat-box {
     height: 600px; 
     padding: 30px;
-    background: transparent; /* Quitamos las líneas de fondo del chat */
+    background: transparent; 
+    
+    /* LÍNEAS AÑADIDAS PARA ARREGLAR EL SCROLL Y ALINEACIÓN */
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+/* DISEÑO DE LA BARRA DE SCROLL (Para mantener la estética) */
+.chat-box::-webkit-scrollbar {
+    width: 8px;
+}
+.chat-box::-webkit-scrollbar-track {
+    background: rgba(0, 229, 255, 0.05); 
+    border-radius: 4px;
+}
+.chat-box::-webkit-scrollbar-thumb {
+    background: rgba(0, 229, 255, 0.3); 
+    border-radius: 4px;
+}
+.chat-box::-webkit-scrollbar-thumb:hover {
+    background: var(--neon-cyan); 
 }
 
 .msg { 
@@ -78,13 +99,17 @@ h3, h4, h5, .nav-link, .terminal-header {
 .msg-bot { 
     background: rgba(0, 229, 255, 0.05); 
     border-left: 3px solid var(--neon-cyan);
-    color: #ffffff; 
+    color: #ffffff;
+    align-self: flex-start;
+    margin-right: auto;
 }
 
 .msg-user { 
     background: rgba(255, 0, 255, 0.05); 
     border-right: 3px solid var(--neon-magenta);
-    color: #ffffff; 
+    color: #ffffff;
+    align-self: flex-end;
+    margin-left: auto;
 }
 
 /* INPUT TERMINAL */
@@ -98,8 +123,18 @@ h3, h4, h5, .nav-link, .terminal-header {
     flex-grow: 1; 
     outline: none; 
     transition: background 0.3s;
+    font-family: 'Exo 2', sans-serif;
 }
 .cyber-input:focus { background: rgba(0, 229, 255, 0.02); }
+
+.cyber-textarea {
+    resize: vertical;
+    max-height: 150px;
+    min-height: 50px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
 
 .cyber-button { 
     background: var(--cyber-panel); 

@@ -16,21 +16,39 @@
         <h1 class="glitch-text">SISTEMA RECOMENDACIÓN</h1>
     </div>
 
-    <div id="home-section" class="terminal-card mx-auto p-5 text-center">
+    <div id="login-section" class="terminal-card mx-auto p-5 text-center" style="max-width: 500px;">
+        <h3 class="mb-4 text-white" style="font-family: 'Michroma';">ENLACE DE COMUNICACIÓN</h3>
+        <p class="text-muted mb-4">Establezca conexión con el núcleo de procesamiento local para continuar.</p>
+        
+        <div class="mb-4 text-start">
+            <label class="text-white mb-2" style="font-size: 0.9rem;">ENLACE NGROK (URL API):</label>
+            <input type="text" id="api-url-input" class="cyber-input w-100" placeholder="Ej: https://1234-abcd.ngrok-free.app">
+        </div>
+        
+        <div class="mb-4 text-start">
+            <label class="text-white mb-2" style="font-size: 0.9rem;">CLAVE DE ACCESO:</label>
+            <input type="password" id="password-input" class="cyber-input w-100" placeholder="••••••••">
+        </div>
+
+        <button id="btn-login" class="cyber-button w-100 py-3" style="color: var(--neon-green); border-color: var(--neon-green);">INICIALIZAR CONEXIÓN</button>
+        <p id="login-error" class="text-danger mt-3 d-none" style="font-weight: bold;"></p>
+    </div>
+
+    <div id="home-section" class="terminal-card mx-auto p-5 text-center d-none">
         <h3 class="mb-4" style="color: var(--neon-cyan); font-weight: bold; text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);">BIENVENIDO AL NÚCLEO DE ANÁLISIS</h3>
         <p class="mb-5 text-white" style="font-size: 1.2rem; opacity: 0.9;">Seleccione un protocolo para continuar:</p>
         
         <div class="d-flex flex-column gap-4 align-items-center max-w-md mx-auto" style="max-width: 400px;">
             <button id="btn-start-chat" class="cyber-button w-100 py-3" style="color: var(--neon-cyan);">INICIAR CHAT</button>
             <button id="btn-info" class="cyber-button w-100 py-3" style="color: var(--neon-cyan);">INFORMACIÓN</button>
-            <button id="btn-home-dev-skip" class="cyber-button w-100 py-3" style="color: var(--neon-cyan);">[ DEV ] DUMMY SKIP</button>
+            <button id="btn-disconnect" class="cyber-button-alt w-100 py-3 mt-3" style="color: var(--neon-red);">DESCONECTAR SISTEMA</button>
         </div>
     </div>
 
     <div id="info-section" class="terminal-card mx-auto p-5 d-none">
         <h3 class="mb-4 text-center" style="color: var(--neon-blue);"><i class="fa-solid fa-circle-info me-2"></i> INFORMACIÓN DEL SISTEMA</h3>
         <div class="info-text mb-5" style="line-height: 1.8; font-size: 1.1rem; color: #ccc;">
-            <p>Este sistema experto utiliza Inteligencia Artificial avanzada (Modelos de Lenguaje y Redes RoBERTa) para analizar su personalidad a través de una breve entrevista conversacional.</p>
+            <p>Este sistema experto utiliza Inteligencia Artificial avanzada para analizar su personalidad a través de una breve entrevista conversacional.</p>
             <p>Basándose en sus respuestas y en el procesamiento de lenguaje natural, el sistema calculará su arquetipo <strong>MBTI</strong> y los porcentajes de sus cinco grandes rasgos de personalidad (<strong>OCEAN</strong>).</p>
             <p>Finalmente, un motor de correlación matemática traducirá su perfil psicológico en afinidades de géneros, sugiriéndole películas, series, música y videojuegos que encajen perfectamente con su forma de ser.</p>
         </div>
@@ -45,9 +63,16 @@
             <button id="btn-abort-chat" class="btn btn-sm" style="color: var(--neon-red); border: 1px solid var(--neon-red); border-radius: 0; font-family: 'Exo 2'; font-weight: bold; background: rgba(255, 49, 49, 0.1);">ABORTAR Y VOLVER</button>
         </div>
         <div class="chat-box" id="chat-box"></div>
-        <div class="terminal-input-area d-flex">
-            <input type="text" id="user-input" class="cyber-input" placeholder="INGRESE RESPUESTA...">
+        
+        <div id="input-area" class="terminal-input-area d-flex">
+            <textarea id="user-input" class="cyber-input cyber-textarea" placeholder="INGRESE RESPUESTA... (Enter para enviar, Shift+Enter para salto de línea)"></textarea>
             <button id="send-btn" class="cyber-button">ENVIAR</button>
+        </div>
+        
+        <div id="analyze-area" class="d-none w-100">
+            <button id="btn-start-analysis" class="cyber-button w-100 py-3" style="color: var(--neon-green); border-top: 1px solid rgba(57, 255, 20, 0.3); font-size: 1.1rem; background: rgba(57, 255, 20, 0.05); transition: 0.3s;">
+                [ EJECUTAR ANÁLISIS DE CONVERSACIÓN ]
+            </button>
         </div>
     </div>
 
@@ -71,7 +96,7 @@
         </div>
 
         <div class="tab-content terminal-card p-4 mx-auto" id="myTabContent" style="max-width: 1000px;">
-            <div class="tab-pane fade" id="tab-chat"><div class="chat-box readonly-chat" id="chat-history-box" style="height: 400px;"></div></div>
+            <div class="tab-pane fade" id="tab-chat"><div class="chat-box readonly-chat" id="chat-history-box" style="height: 650px;"></div></div>
             
             <div class="tab-pane fade show active" id="tab-mbti">
                 <div class="text-center">

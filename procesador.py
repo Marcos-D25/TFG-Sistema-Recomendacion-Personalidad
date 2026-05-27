@@ -122,7 +122,7 @@ class Preprocesador:
 
     def extraer_embeddings(self, tokens) -> ndarray:
         '''
-        Funcion que realiza tanto el embedding como el mean pooling a los tokens pasados como parametros
+        Funcion que realiza tanto el embedding como la extraccion del token CLS los tokens pasados como parametros
 
         :param tokens: Corresponde con los tokens computados del texto que se quiere procesar
         :return: Array correspondiente con el embedding final del token

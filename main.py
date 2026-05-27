@@ -4,7 +4,7 @@ from pipeline import Pipeline
 from correlacionador import Correlacionador
 from recomendador import Recomendador
 from deep_translator import GoogleTranslator
-
+'''
 #FASE 1 -> AGENTE CONVERSACIONAL
 agente = AgenteLlama()
 print("\n" + "=" * 50)
@@ -28,8 +28,8 @@ if agente.entrevista_finalizada:
     conversacion  = agente.obtener_historial()
     conversacion = " ".join(conversacion) #Uno toda la conversacion en un único archivo
     print("Historial de usuario:", conversacion+"\n")
-
-conversacion_prueba = (
+'''
+conversacion = (
 '''
  Creo que aprovecharía esa paz para desconectar de verdad y poner mis pensamientos en orden. Seguramente me pasaría las horas paseando por la orilla, observando la naturaleza y reflexionando con tranquilidad.
 Me parece que tu respuesta sugiere que valoras la introspección y la conexión con la naturaleza, lo que podría indicar un fuerte sentido de introspección y pensamiento reflexivo. Esto podría ser un aspecto interesante en tu personalidad. Aunque tanta multitud me agobia un poco por el ruido, me centraría en la conexión con mis amigos en ese momento tan especial. Me aseguraría de que todos estemos cómodos y juntos, cantando nuestra canción para crear un recuerdo bonito y con mucho significado para el grupo.

@@ -1,52 +1,82 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 import numpy as np
 import seaborn as sns
 import os
 
-def recuperar_f1_scores(ruta_excel):
+def recuperar_f1_scores(ruta_excel, pestanas=None):
     """
     Recupera los valores de F1-Score de un archivo Excel con múltiples pestañas.
     
     Args:
         ruta_excel (str): Ruta al archivo Excel.
+        pestanas (list): Lista de pestañas a procesar. Si es None, procesa todas.
     
     Returns:
         dict: Diccionario anidado con la estructura {nombre_pestaña: {modelo_dimension: media_f1}}
     """
-    xls = pd.ExcelFile(ruta_excel)
-    resultado = {}
-    
-    for sheet_name in xls.sheet_names:
-        df = pd.read_excel(xls, sheet_name=sheet_name)
-        sheet_dict = {}
+    try:
+        xls = pd.ExcelFile(ruta_excel)
+        resultado = {}
         
-        for _, row in df.iterrows():
-            modelo_dim = row['Modelos']
-            if pd.isna(modelo_dim) or str(modelo_dim).strip() == '':
+        # Si no especificas pestañas, usa todas disponibles
+        sheets_a_procesar = pestanas if pestanas else xls.sheet_names
+        
+        for sheet_name in sheets_a_procesar:
+            if sheet_name not in xls.sheet_names:
+                print(f"[ADVERTENCIA] Pestaña '{sheet_name}' no encontrada en el Excel")
                 continue
-            modelo_dim = str(modelo_dim).strip()
-            f1_str = str(row['F1-Score'])
+                
+            df = pd.read_excel(xls, sheet_name=sheet_name)
+            sheet_dict = {}
             
-            # Parsear la cadena F1-Score
-            valores = []
-            for line in f1_str.split('\n'):
-                if ':' in line:
-                    parts = line.split(':', 1)
-                    if len(parts) == 2:
-                        try:
-                            val = float(parts[1].strip())
-                            valores.append(val)
-                        except ValueError:
-                            continue
+            # Verificar que la columna 'Modelos' existe
+            if 'Modelos' not in df.columns:
+                print(f"[ADVERTENCIA] Pestaña '{sheet_name}' no tiene columna 'Modelos'")
+                continue
             
-            # Calcular la media
-            media = sum(valores) / len(valores) if valores else 0.0
-            sheet_dict[modelo_dim] = media
+            for _, row in df.iterrows():
+                modelo_dim = row['Modelos']
+                if pd.isna(modelo_dim) or str(modelo_dim).strip() == '':
+                    continue
+                modelo_dim = str(modelo_dim).strip()
+                
+                if pd.isna(row['F1-Score']):
+                    continue
+                    
+                f1_str = str(row['F1-Score'])
+                
+                # Parsear la cadena F1-Score (formato: "0: 0.72\n1: 0.92")
+                valores = []
+                for line in f1_str.split('\n'):
+                    line = line.strip()
+                    if ':' in line:
+                        parts = line.split(':', 1)
+                        if len(parts) == 2:
+                            try:
+                                val = float(parts[1].strip())
+                                valores.append(val)
+                            except ValueError:
+                                continue
+                
+                # Calcular la media
+                if valores:
+                    media = sum(valores) / len(valores)
+                    sheet_dict[modelo_dim] = media
+            
+            resultado[sheet_name] = sheet_dict
         
-        resultado[sheet_name] = sheet_dict
-    
-    return resultado
+        print(f"[EXITO] Se recuperaron datos de {len(resultado)} pestañas")
+        return resultado
+    except FileNotFoundError:
+        print(f"[ERROR] Archivo no encontrado: {ruta_excel}")
+        return {}
+    except Exception as e:
+        print(f"[ERROR] Error al leer Excel: {e}")
+        import traceback
+        traceback.print_exc()
+        return {}
 
 def crear_grafica_comparativa(datos):
     """
@@ -72,6 +102,12 @@ def crear_grafica_comparativa(datos):
     
     df = pd.DataFrame(df_list)
     
+    # Obtener los algoritmos únicos ordenados
+    algoritmos = sorted(df['Algoritmo'].unique())
+    
+    # Obtener la paleta de colores
+    colores = sns.color_palette('Set2', len(algoritmos))
+    
     g = sns.catplot(
         data=df,
         kind='bar',
@@ -88,9 +124,19 @@ def crear_grafica_comparativa(datos):
     )
     g.set_titles('{col_name}')
     g.set_axis_labels('Modelo', 'F1-Score')
+    
+    # Establecer rango del eje Y y agregar grid horizontal
+    for ax in g.axes.flat:
+        ax.set_ylim(0, 1)  # Rango completo de 0 a 1
+        ax.grid(axis='y', linestyle='--', alpha=0.7, linewidth=0.8)  # Grid horizontal punteado
+        ax.set_axisbelow(True)  # Grid detrás de las barras
+    
     g.figure.subplots_adjust(top=0.9, right=0.88, left=0.08, hspace=0.45, wspace=0.25)
+    
+    # Crear handles de leyenda con los colores correctos
+    handles = [mpatches.Patch(color=colores[i], label=algo) for i, algo in enumerate(algoritmos)]
     g.figure.legend(
-        labels=df['Algoritmo'].unique(),
+        handles=handles,
         title='Algoritmo',
         loc='center right',
         bbox_to_anchor=(1, 0.42),
@@ -190,6 +236,14 @@ def generar_graficas_circulares(ruta_csv="dataset9K/MBTI_limpio.csv", columna_et
 if __name__ == "__main__":
     #generar_graficas_mbti()
     #generar_graficas_circulares()
-    #dataset = recuperar_f1_scores("resultados/Resultados_Roberta-Base-FT.xlsx")
-    #crear_grafica_comparativa(dataset)
+    ruta_excel = os.path.join("resultados", "Comparativa_Maestra.xlsx")
+    pestanas = ["SMOTE", "BorderlineSMOTE", "ADASYN", "SMOTETomek"]
+    
+    print(f"[INFO] Leyendo archivo: {ruta_excel}")
+    print(f"[INFO] Pestañas a procesar: {pestanas}")
+    dataset = recuperar_f1_scores(ruta_excel, pestanas=pestanas)
+    if dataset:
+        crear_grafica_comparativa(dataset)
+    else:
+        print("[ERROR] No se pudieron recuperar los datos del Excel.")
     pass

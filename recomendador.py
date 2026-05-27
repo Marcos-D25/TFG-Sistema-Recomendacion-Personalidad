@@ -62,13 +62,44 @@ class Recomendador:
         if df_recomendados.empty:
             return []
 
-        df_recomendados['Afinidad_Norm'] = (df_recomendados['Afinidad_Bruta'] / top_n) * 100
+        # NUEVO: Calculamos cuántos géneros tiene el item realmente (para no penalizar si solo tiene 1 o 2 etiquetas)
+        df_recomendados['Total_Generos_Item'] = df_recomendados['genre'].apply(lambda x: len(ast.literal_eval(x)) if isinstance(x, str) else len(x))
+
+        # El denominador será el menor valor entre el top_n (5) y la cantidad real de géneros del item
+        df_recomendados['Denominador'] = df_recomendados['Total_Generos_Item'].apply(lambda x: min(x, top_n))
+
+        # Normalización justa
+        df_recomendados['Afinidad_Norm'] = (df_recomendados['Afinidad_Bruta'] / df_recomendados['Denominador']) * 100
         df_recomendados['Puntuacion_Final'] = (df_recomendados['Afinidad_Norm'] * self.PESO_AFINIDAD) + (df_recomendados['score'] * self.PESO_SCORE)
 
         # Selección de la piscina y muestra aleatoria
-        pool = df_recomendados.sort_values(by='Puntuacion_Final', ascending=False).head(40)
-        cantidad_a_mostrar = min(top_n, len(pool))
-        df_final = pool.sample(n=cantidad_a_mostrar).sort_values(by='Puntuacion_Final', ascending=False)
+        #pool = df_recomendados.sort_values(by='Puntuacion_Final', ascending=False).head(40)
+        #cantidad_a_mostrar = min(top_n, len(pool))
+        #df_final = pool.sample(n=cantidad_a_mostrar).sort_values(by='Puntuacion_Final', ascending=False)
+
+        df_recomendados = df_recomendados.sort_values(by='Puntuacion_Final', ascending=False)
+        indices_seleccionados = []
+        
+        for genero in top_generos:
+            df_filtrado = df_recomendados[
+                df_recomendados['genre'].astype(str).str.contains(genero, na=False, case=False) & 
+                ~df_recomendados.index.isin(indices_seleccionados)
+            ]
+            
+            if not df_filtrado.empty:
+                seleccion = df_filtrado.head(5).sample(n=1)
+                indices_seleccionados.append(seleccion.index[0])
+                
+        faltantes = top_n - len(indices_seleccionados)
+        if faltantes > 0:
+            df_restante = df_recomendados[~df_recomendados.index.isin(indices_seleccionados)]
+            pool_relleno = df_restante.head(40) # Mantenemos tu concepto de "piscina" original
+            if not pool_relleno.empty:
+                relleno = pool_relleno.sample(n=min(faltantes, len(pool_relleno)))
+                indices_seleccionados.extend(relleno.index.tolist())
+
+        df_final = df_recomendados.loc[indices_seleccionados].sort_values(by='Puntuacion_Final', ascending=False)
+
 
         # Construcción del JSON de salida
         resultados = []
@@ -122,19 +153,38 @@ class Recomendador:
         df_recomendados = df[df['Afinidad_Bruta'] > 0].copy()
 
         # 3.3 Normalizar la Afinidad a escala 0-100 (El máximo es 3 coincidencias)
-        df_recomendados['Afinidad_Norm'] = (df_recomendados['Afinidad_Bruta'] / top_n) * 100
+        # NUEVO: Calculamos cuántos géneros tiene el item realmente (para no penalizar si solo tiene 1 o 2 etiquetas)
+        df_recomendados['Total_Generos_Item'] = df_recomendados['genre'].apply(lambda x: len(ast.literal_eval(x)) if isinstance(x, str) else len(x))
+
+        # El denominador será el menor valor entre el top_n (5) y la cantidad real de géneros del item
+        df_recomendados['Denominador'] = df_recomendados['Total_Generos_Item'].apply(lambda x: min(x, top_n))
+
+        # Normalización justa
+        df_recomendados['Afinidad_Norm'] = (df_recomendados['Afinidad_Bruta'] / df_recomendados['Denominador']) * 100
 
         df_recomendados['Puntuacion_Final'] = (df_recomendados['Afinidad_Norm'] * self.PESO_AFINIDAD) + (df_recomendados['score'] * self.PESO_SCORE)
 
-        # 3.5 Ordenar por la Puntuación Final de mayor a menor y coger una "Piscina" de los 20 mejores
-        pool_recomendaciones = df_recomendados.sort_values(by='Puntuacion_Final', ascending=False).head(40)
-
-        # 3.6 Seleccionar 5 al azar de esa piscina (o menos si el DataFrame tiene menos de 5)
-        cantidad_a_mostrar = min(top_n, len(pool_recomendaciones))
+        df_recomendados = df_recomendados.sort_values(by='Puntuacion_Final', ascending=False)
+        indices_seleccionados = []
         
-        # El .sample() hace la magia de la aleatoriedad. 
-        # Luego le volvemos a hacer sort_values para que al imprimirlos por pantalla salgan ordenados de mejor a peor nota.
-        df_recomendados = pool_recomendaciones.sample(n=cantidad_a_mostrar).sort_values(by='Puntuacion_Final', ascending=False)
+        for genero in top_generos:
+            df_filtrado = df_recomendados[
+                df_recomendados['genre'].astype(str).str.contains(genero, na=False, case=False) & 
+                ~df_recomendados.index.isin(indices_seleccionados)
+            ]
+            if not df_filtrado.empty:
+                seleccion = df_filtrado.head(5).sample(n=1)
+                indices_seleccionados.append(seleccion.index[0])
+                
+        faltantes = top_n - len(indices_seleccionados)
+        if faltantes > 0:
+            df_restante = df_recomendados[~df_recomendados.index.isin(indices_seleccionados)]
+            pool_relleno = df_restante.head(40)
+            if not pool_relleno.empty:
+                relleno = pool_relleno.sample(n=min(faltantes, len(pool_relleno)))
+                indices_seleccionados.extend(relleno.index.tolist())
+
+        df_recomendados = df_recomendados.loc[indices_seleccionados].sort_values(by='Puntuacion_Final', ascending=False)
 
         self.mostrar_recomendaciones(df_recomendados, tipo_contenido, col, top_n)
 

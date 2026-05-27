@@ -84,7 +84,7 @@ class AgenteLlama:
             
             "7": "Haz una reflexion breve sobre la respuesta del usuario con respecto a su actitud y el escenario planteado. Cambia de tema y plantea un escenario para la PERCEPCIÓN (P). Inventa una situación de improvisación absoluta, donde todos los planes se hayan roto pero sea una oportunidad para ser flexible y relajado. Haz UNA pregunta abierta sobre cómo disfrutaría de esa espontaneidad.",
             
-            "8": "Haz una última reflexión analítica sobre su capacidad de improvisación. Acto seguido, avísale que el análisis ha finalizado, agradécele mucho el tiempo y la sinceridad en todas sus respuestas, y despídete amablemente. BAJO NINGÚN CONCEPTO HAGAS OTRA PREGUNTA EN ESTE TURNO."
+            "8": "Haz una última reflexión analítica sobre su capacidad de improvisación. Acto seguido, avísale que el análisis ha finalizado y despídete amablemente. BAJO NINGÚN CONCEPTO HAGAS OTRA PREGUNTA EN ESTE TURNO."
         }
         """
         return json.loads(json_guion2)
@@ -121,21 +121,21 @@ class AgenteLlama:
 
         2-> FASE DESARROLLO (SE REPITE EN TODOS LOS TURNOS HASTA EL FINAL):
             [BREVE ANALISIS DE LA RESPUESTA DEL USUARIO] +\n(SALTO LINEA)+ [TRANSICION Y NUEVO ESCENARIO HIPOTETICO] + [PREGUNTA ABIERTA]
-            No digas "entiendo" o "qué bien". Analiza la lógica o el rasgo de personalidad que detectas en lo que el usuario acaba de decir.
+            No digas "entiendo" o "qué bien". Analiza la lógica o el rasgo de personalidad que detectas en lo que el usuario acaba de decir. DEBES RESPONDER COMO "Por lo que dices" o "Veo que..." o "Me llama la atención que..." o "Parece que..." o "Lo que me transmites es..." o "Tu respuesta me hace pensar que...". Luego, haz una transición suave a un nuevo escenario hipotético, asegurándote de que el nuevo escenario esté relacionado con el historial completo del usuario.
             DEBES incluir el salto de línea \n inmediatamente después del análisis para separar la reflexión del nuevo escenario.
 
         3-> FASE CONCLUSION:
-            [ANALISIS GLOBAL DE LA CONVERSACION] +\n(SALTO LINEA)+ [DESPEDIDA Y CIERRE DEFINITIVO]
-            En este último turno, el análisis no se omite. Debes analizar la última respuesta del usuario y conectarla con una reflexión breve sobre todo su comportamiento durante la charla (sinceridad, estilo de procesamiento).
-            PROHIBIDO hacer ninguna pregunta en este turno. Termina la interacción con el cierre definitivo.
+            [UN ÚNICO ANALISIS GLOBAL DE LA CONVERSACION] +\n(SALTO LINEA)+ [DESPEDIDA]
+            En este último turno, el análisis no se omite. Debes analizar la última respuesta del usuario y conectarla con una reflexión breve sobre todo su comportamiento durante la charla.
+            PROHIBIDO hacer ninguna PREGUNTA/ESCENARIO en este turno. Termina la interacción con el cierre definitivo.
         
-        - GESTIÓN DE ESCENARIOS (Siempre Hipotéticos):
+        - GESTIÓN DE ESCENARIOS:
         Plantea las situaciones AL USUARIO como dilemas imaginarios (usa: "Imagina que...", "¿Qué harías si..."). NUNCA lo cuentes como si te estuviera pasando a ti.
 
         - CALIBRACIÓN DE TONO (90% Formal / 10% Informal):
         Lenguaje impecable, respetuoso y directo, pero ligeramente cercano. PROHIBIDO usar apelativos familiares y prohibido describir acciones físicas. Ve directo al grano.
 
-        - NEUTRALIDAD CLÍNICA ABSOLUTA (CERO MORALINA):
+        - NEUTRALIDAD CLÍNICA ABSOLUTA:
         Acepta CUALQUIER respuesta del usuario sin juzgarla. Si responde con hostilidad o falta de empatía, TIENES TERMINANTEMENTE PROHIBIDO DARLE LECCIONES DE MORAL. Acepta su respuesta de forma fría y pasa al siguiente escenario con total normalidad.
         """
 
@@ -156,7 +156,7 @@ class AgenteLlama:
                 outputs = self.modelo.generate(
                     **inputs,
                     max_new_tokens=250,
-                    temperature=0.5,
+                    temperature=0.6,
                     top_p=0.85,
                     repetition_penalty=1.0,
                     eos_token_id=self.terminadores,
@@ -202,6 +202,8 @@ class AgenteLlama:
         )
 
         respuesta_modelo = self._generar_respuesta_segura(historial_temporal)
+        del historial_temporal
+
         self.historial_chat.append({"role": "assistant", "content": respuesta_modelo})
         self.turno_actual += 1
         #print(f"\n[DEBUG] Turno {self.turno_actual} - Instrucción aplicada: {instruccion_sigilosa}\n")

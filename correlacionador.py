@@ -171,7 +171,6 @@ class Correlacionador:
                     [float(x) for x in np.round(res,2)])
                 )
 
-
     def correlacionar_MUSICA(self) -> dict:
         if self.OCEAN is None:
             self.correlacionar_OCEAN()
